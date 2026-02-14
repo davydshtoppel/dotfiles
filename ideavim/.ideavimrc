@@ -13,6 +13,8 @@ map Q gq
 
 
 "" -- Map IDE actions to IdeaVim -- https://jb.gg/abva4t
+" dg already mapped to go-to-definition
+map gr <Action>(FindUsages)
 map <leader>ca <Action>(ShowIntentionActions)
 map <leader>cf <Action>(ReformatCode)
 map <leader>cg <Action>(Generate)
