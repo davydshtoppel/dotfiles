@@ -23,6 +23,7 @@ Plug 'mtdl9/vim-log-highlighting'
 Plug 'machakann/vim-highlightedyank'
 Plug 'tpope/vim-commentary'
 Plug 'preservim/nerdtree'
+Plug 'mechatroner/rainbow_csv'
 
 call plug#end()
 
