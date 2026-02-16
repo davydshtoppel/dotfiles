@@ -9,7 +9,7 @@ set scrolloff=5
 syntax on
 filetype plugin indent on
 
-au BufRead,BufNewFile .sdkmanrc setfiletype properties
+au BufRead,BufNewFile .sdkmanrc setfiletype jproperties
 
 set relativenumber
 set ruler
