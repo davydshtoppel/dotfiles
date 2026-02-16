@@ -13,10 +13,15 @@ map Q gq
 
 
 "" -- Map IDE actions to IdeaVim -- https://jb.gg/abva4t
+map ]d <Action>(GotoNextError)
+map [d <Action>(GotoPreviousError)
+
 " dg already mapped to go-to-definition
 map gr <Action>(FindUsages)
+
 map <leader>ca <Action>(ShowIntentionActions)
 map <leader>cf <Action>(ReformatCode)
+map <leader>co <Action>(OptimizeImports)
 map <leader>cg <Action>(Generate)
 map <leader>rn <Action>(RenameElement)
 
