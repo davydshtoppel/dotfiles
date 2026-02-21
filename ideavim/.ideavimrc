@@ -18,12 +18,20 @@ map [d <Action>(GotoPreviousError)
 
 " dg already mapped to go-to-definition
 map gr <Action>(FindUsages)
+map <C-n> <Action>(SelectInProjectView)
+map <C-t> <Action>(ActivateTerminalToolWindow)
 
 map <leader>ca <Action>(ShowIntentionActions)
 map <leader>cf <Action>(ReformatCode)
 map <leader>co <Action>(OptimizeImports)
 map <leader>cg <Action>(Generate)
+
 map <leader>rn <Action>(RenameElement)
+
+map <leader>t <Action>(Run)
+map <leader>T <Action>(RunClass)
+map <leader>d <Action>(Debug)
+map <leader>D <Action>(DebugClass)
 
 "" Map \r to the Reformat Code action
 "map \r <Action>(ReformatCode)
