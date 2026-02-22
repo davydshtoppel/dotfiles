@@ -18,6 +18,8 @@ map [d <Action>(GotoPreviousError)
 
 " dg already mapped to go-to-definition
 map gr <Action>(FindUsages)
+map gi <Action>(GotoImplementation)
+
 map <C-n> <Action>(SelectInProjectView)
 map <C-t> <Action>(ActivateTerminalToolWindow)
 
@@ -32,12 +34,6 @@ map <leader>t <Action>(Run)
 map <leader>T <Action>(RunClass)
 map <leader>d <Action>(Debug)
 map <leader>D <Action>(DebugClass)
-
-"" Map \r to the Reformat Code action
-"map \r <Action>(ReformatCode)
-
-"" Map <leader>d to start debug
-"map <leader>d <Action>(Debug)
 
 "" Map \b to toggle the breakpoint on the current line
 "map \b <Action>(ToggleLineBreakpoint)
