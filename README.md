@@ -7,6 +7,8 @@ Personal configuration files for editor and shell environments.
 - **vim/.vimrc** - Vim editor configuration with plugins and keybindings
 - **ideavim/.ideavimrc** - IdeaVim plugin configuration for JetBrains IDEs
 - **starship/.config/starship.toml** - Starship shell prompt configuration
+- **rule-gof/.github/gof.instructions.md** - GitHub Copilot instruction for OOP design patterns
+- **rule-gof/.claude/rules/gof.md** - Claude Code rule for OOP design patterns
 
 ## Installation
 
@@ -30,12 +32,15 @@ Since this repository is typically cloned to a location other than the home dire
 ```bash
 cd /path/to/dotfiles
 stow -t ~ vim ideavim starship
+stow --no-folding -t ~ rule-gof
 ```
 
 This creates symbolic links for:
 - `vim/.vimrc` → `~/.vimrc`
 - `ideavim/.ideavimrc` → `~/.ideavimrc`
 - `starship/.config/starship.toml` → `~/.config/starship.toml`
+- `rule-gof/.github/gof.instructions.md` → `~/.github/gof.instructions.md`
+- `rule-gof/.claude/rules/gof.md` → `~/.claude/rules/gof.md`
 
 ### Apply Individual Packages
 
@@ -45,6 +50,7 @@ To apply only specific configurations:
 stow -t ~ vim              # Vim configuration only
 stow -t ~ ideavim         # IdeaVim configuration only
 stow -t ~ starship        # Starship configuration only
+stow --no-folding -t ~ rule-gof        # OOP design patterns rules (Copilot & Claude Code)
 ```
 
 ### Remove Dotfiles
@@ -52,7 +58,7 @@ stow -t ~ starship        # Starship configuration only
 To remove all symlinks:
 
 ```bash
-stow -t ~ -D vim ideavim starship
+stow -t ~ -D vim ideavim starship rule-gof
 ```
 
 Or remove individual packages:

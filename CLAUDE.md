@@ -8,6 +8,8 @@ This is a personal dotfiles repository containing editor and shell configuration
 - **vim/.vimrc** - Vim editor configuration with plugins and keybindings
 - **ideavim/.ideavimrc** - IdeaVim plugin configuration for JetBrains IDEs
 - **starship/.config/starship.toml** - Starship shell prompt configuration
+- **rule-gof/.github/gof.instructions.md** - GitHub Copilot instruction for OOP design patterns
+- **rule-gof/.claude/rules/gof.md** - Claude Code rule for Gang of Four patterns and SOLID principles
 
 ## Architecture & Key Relationships
 
@@ -29,6 +31,15 @@ The `.ideavimrc` sources `.vimrc` at the top (line 7: `source ~/.vimrc`), so the
 
 ### Starship Configuration
 Uses a custom Gruvbox Dark color palette with a multi-segment format. Each segment (os, directory, git, languages, time) has specific styling and positioning. The configuration detects multiple programming languages and shows their versions.
+
+### rule-gof Configuration
+Contains design pattern guidance for code generation tools:
+- **`.github/gof.instructions.md`** - GitHub Copilot instruction file with Gang of Four patterns, SOLID principles, and OOP best practices. Applied to Python, Java, TypeScript, JavaScript, and C# files.
+- **`.claude/rules/gof.md`** - Claude Code rule file auto-loaded for the same file types. Provides the same design pattern guidance when working in Claude Code.
+
+Both files cover creational, structural, and behavioral patterns, with emphasis on composition over inheritance, loose coupling, and clean code practices.
+
+**Installation note:** When stowing rule-gof, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-gof`. This allows other rules to coexist in `~/.claude/rules/` and `~/.github/`.
 
 ## Important Configuration Details
 
