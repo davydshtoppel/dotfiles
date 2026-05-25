@@ -10,6 +10,8 @@ This is a personal dotfiles repository containing editor and shell configuration
 - **starship/.config/starship.toml** - Starship shell prompt configuration
 - **rule-gof/.github/gof.instructions.md** - GitHub Copilot instruction for OOP design patterns
 - **rule-gof/.claude/rules/gof.md** - Claude Code rule for Gang of Four patterns and SOLID principles
+- **rule-java/.github/java.instructions.md** - GitHub Copilot instruction for Java style conventions
+- **rule-java/.claude/rules/java.md** - Claude Code rule for Java style conventions
 
 ## Architecture & Key Relationships
 
@@ -40,6 +42,15 @@ Contains design pattern guidance for code generation tools:
 Both files cover creational, structural, and behavioral patterns, with emphasis on composition over inheritance, loose coupling, and clean code practices.
 
 **Installation note:** When stowing rule-gof, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-gof`. This allows other rules to coexist in `~/.claude/rules/` and `~/.github/`.
+
+### rule-java Configuration
+Contains Java style guidance for code generation tools:
+- **`.github/java.instructions.md`** - GitHub Copilot instruction file with Sun Checkstyle conventions, JSpecify nullability, and JDK 21 idioms. Applied to Java files.
+- **`.claude/rules/java.md`** - Claude Code rule file auto-loaded for Java files. Provides the same style guidance when working in Claude Code.
+
+Both files cover naming conventions, import ordering, nullability annotations, the `final` keyword, and JDK 21 idioms (switch expressions, `var`, records, sealed classes, pattern matching, text blocks).
+
+**Installation note:** When stowing rule-java, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-java`. This allows other rules to coexist in `~/.claude/rules/` and `~/.github/`.
 
 ## Important Configuration Details
 
