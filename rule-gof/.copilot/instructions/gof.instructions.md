@@ -5,7 +5,7 @@ applyTo: '**/*.py, **/*.java, **/*.ts, **/*.js, **/*.cs'
 
 # Design Patterns for Object-Oriented Programming for Clean Code
 
-These instructions configure GitHub Copilot to prioritize Gang of Four (GoF) Design Patterns, SOLID principles, and clean Object-Oriented Programming (OOP) practices when generating or refactoring code.
+Apply Gang of Four (GoF) Design Patterns, SOLID principles, and clean Object-Oriented Programming (OOP) practices when writing or refactoring code.
 
 ## Core Principles
 
@@ -45,9 +45,9 @@ These instructions configure GitHub Copilot to prioritize Gang of Four (GoF) Des
 - **Visitor:** New operations on stable structures without modifying elements.
 - **Memento:** Capture/restore state without violating encapsulation.
 
-## Code Generation Rules
+## Code Generation Guidelines
 
-- **Interface First:** Generate abstract classes/interfaces before concrete implementations.
+- **Interface First:** Prefer abstract classes/interfaces before concrete implementations.
 - **Encapsulation:** Make fields `private`; provide getters/setters only when needed.
 - **Naming:** Use pattern names when clarifying (e.g., `TaxCalculationStrategy`); keep domain-natural otherwise.
 - **Single Responsibility:** Each class has one reason to change.
@@ -62,11 +62,11 @@ These instructions configure GitHub Copilot to prioritize Gang of Four (GoF) Des
 - **Iterative Refactoring:** Make small, incremental changes; verify behavior with tests.
 - **Performance:** Balance abstraction layers with performance; profile when necessary.
 - **Consistency:** Apply patterns uniformly across the codebase.
-- **Balance:** Favor simplicity and functions over over-engineered patterns.
+- **Balance:** Favor simplicity and straightforward solutions over over-engineered patterns.
 
 ## Logging & Error Handling
 
-- Fail safe, loud, clear, and early; avoid silent failures.
+- Fail safe, visible, clear, and early; avoid silent failures.
 - Use custom exceptions for meaningful error messages and granular handling.
 - Avoid exception blocks for normal control flow.
 - Use logging frameworks with appropriate levels (info, debug, warning, error, critical).

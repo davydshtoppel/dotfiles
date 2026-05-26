@@ -43,13 +43,17 @@ Use `$MERGE_BASE..$PR_BRANCH` for all diffs.
 
 ### 4. Gather Context
 
+Run all three commands:
+
 ```bash
 git log --oneline "$MERGE_BASE".."$PR_BRANCH"
 git diff --stat "$MERGE_BASE".."$PR_BRANCH"
 git diff "$MERGE_BASE".."$PR_BRANCH"
 ```
 
-Use `codebase` to read non-deleted, non-binary changed files for full context.
+If `git log` produces no output, stop and inform the user that the PR branch has no commits ahead of the base.
+
+Use `codebase` to read non-deleted, non-binary changed files. Limit individual file reads to files under 500 lines; for larger files, read only regions surrounding changed hunks.
 
 ### 5. Write the Review
 

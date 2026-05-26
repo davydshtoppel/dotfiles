@@ -10,17 +10,21 @@ Apply these conventions when writing or refactoring Java code.
 
 ## Naming
 - Types (classes, interfaces, enums, records, annotations): `UpperCamelCase`
-- Methods and variables: `lowerCamelCase`
+- Methods and variables: `lowerCamelCase` — choose descriptive names that explain purpose
 - Constants (`static final`): `UPPER_SNAKE_CASE`
 - Packages: all lowercase, no underscores
 
 ## Imports
-- No wildcard imports
-- Regular imports before static imports; alphabetical within each group
+- Order: third-party packages, `javax.*` special imports, `java.*` standard packages, then static imports
+- Alphabetically within each group; separate groups with a blank line; no wildcard or star imports
 
 ## Formatting
 - Opening brace on same line; always use braces for `if`/`for`/`while`/`do`
+- 4 spaces per indent level, never tabs
 - Max 100 characters per line; one statement per line
+
+## Visibility
+- For new classes, prefer package-private (`default` access) unless public access is required
 
 ## Nullability (JSpecify)
 - Apply `@NullMarked` at package level (`package-info.java`) or class level; all unannotated reference types are then non-null by default
