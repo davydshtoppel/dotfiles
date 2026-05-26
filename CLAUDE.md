@@ -16,6 +16,8 @@ This is a personal dotfiles repository containing editor and shell configuration
 - **rule-maven/.claude/rules/maven.md** - Claude Code rule for Maven build conventions
 - **skill-review-pr/.claude/skills/review-pr/SKILL.md** - Claude Code `/review-pr` skill for pure-git PR review
 - **skill-review-pr/.copilot/skills/review-pr/SKILL.md** - GitHub Copilot equivalent for PR review
+- **skill-create-junit-test/.claude/skills/create-junit-test/SKILL.md** - Claude Code `/create-junit-test` skill for generating JUnit 5 tests
+- **skill-create-junit-test/.copilot/skills/create-junit-test/SKILL.md** - GitHub Copilot equivalent for JUnit test generation
 
 ## Architecture & Key Relationships
 
@@ -75,6 +77,23 @@ Contains a user-invoked skill for code review using pure git:
 Both files perform the same steps: fetch the PR branch via remote refs (tries GitHub/Gitea style first, then GitLab/Bitbucket), compute the merge base, collect commit list + diff stat + full diff, read changed files for full context, and output a structured review (summary, per-file analysis with concerns and suggestions, overall assessment).
 
 **Installation note:** When stowing skill-review-pr, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ skill-review-pr`. This allows other skills to coexist in `~/.claude/skills/` and `~/.copilot/skills/`.
+
+### skill-create-junit-test Configuration
+Contains a user-invoked skill for generating and refactoring Java unit tests following comprehensive conventions:
+- **`.claude/skills/create-junit-test/SKILL.md`** - Claude Code `/create-junit-test` slash command. Generates or refactors Java unit tests following JUnit 5, AssertJ, Mockito, and best practices (AAA structure, @Nested organization, parameterized tests, soft assertions, no mocks for data classes, etc.).
+- **`.copilot/skills/create-junit-test/SKILL.md`** - GitHub Copilot agent-mode prompt with equivalent workflow.
+
+Both files enforce:
+- **JUnit 5 + AssertJ + Mockito** — detect availability, fallback gracefully
+- **Test organization:** `@Nested` inner class per public method, `when<Condition>_then<Expectation>` method names, `@DisplayName` on all tests/nested classes
+- **AAA structure:** Arrange / Act / Assert with blank-line separators; no control flow in tests
+- **Mocking:** `@Mock` + `@ExtendWith(MockitoExtension.class)`; do NOT mock data classes; do NOT call `verify()` on stubbed methods (strict stubs handle that)
+- **Assertions:** `assertThat(subject).returns(expectedValue, Subject::getField)` for field checks; `SoftAssertions.assertSoftly()` for multi-property assertions; `assertThatThrownBy()` for exceptions
+- **Parameterization:** Replace loops/conditionals with `@ParameterizedTest` + `@CsvSource` / `@MethodSource` / `@ValueSource`
+- **Test data:** Object mother pattern for complex domain objects; inline constructors for simple values
+- **Coverage:** One assertion focus per test; test all branches (happy path, edges, errors, conditionals)
+
+**Installation note:** When stowing skill-create-junit-test, no `--no-folding` is needed — the parent directory `create-junit-test/` prevents stow from folding: `stow -t ~ skill-create-junit-test`.
 
 ## Important Configuration Details
 

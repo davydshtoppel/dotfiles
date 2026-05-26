@@ -15,6 +15,8 @@ Personal configuration files for editor and shell environments.
 - **rule-maven/.claude/rules/maven.md** - Claude Code rule for Maven build conventions
 - **skill-review-pr/.claude/skills/review-pr/SKILL.md** - Claude Code `/review-pr` skill for pure-git PR review
 - **skill-review-pr/.copilot/skills/review-pr/SKILL.md** - GitHub Copilot equivalent for PR review
+- **skill-create-junit-test/.claude/skills/create-junit-test/SKILL.md** - Claude Code `/create-junit-test` skill for JUnit 5 test generation
+- **skill-create-junit-test/.copilot/skills/create-junit-test/SKILL.md** - GitHub Copilot equivalent for JUnit test generation
 
 ## Installation
 
@@ -38,7 +40,8 @@ Since this repository is typically cloned to a location other than the home dire
 ```bash
 cd /path/to/dotfiles
 stow -t ~ vim ideavim starship
-stow --no-folding -t ~ rule-gof rule-java rule-maven skill-review-pr
+stow --no-folding -t ~ rule-gof rule-java rule-maven
+stow -t ~ skill-review-pr skill-create-junit-test
 ```
 
 This creates symbolic links for:
@@ -53,6 +56,8 @@ This creates symbolic links for:
 - `rule-maven/.claude/rules/maven.md` → `~/.claude/rules/maven.md`
 - `skill-review-pr/.copilot/skills/review-pr/SKILL.md` → `~/.copilot/skills/review-pr/SKILL.md`
 - `skill-review-pr/.claude/skills/review-pr/SKILL.md` → `~/.claude/skills/review-pr/SKILL.md`
+- `skill-create-junit-test/.copilot/skills/create-junit-test/SKILL.md` → `~/.copilot/skills/create-junit-test/SKILL.md`
+- `skill-create-junit-test/.claude/skills/create-junit-test/SKILL.md` → `~/.claude/skills/create-junit-test/SKILL.md`
 
 ### Apply Individual Packages
 
@@ -65,7 +70,8 @@ stow -t ~ starship        # Starship configuration only
 stow --no-folding -t ~ rule-gof        # OOP design patterns rules (Copilot & Claude Code)
 stow --no-folding -t ~ rule-java       # Java style conventions rules (Copilot & Claude Code)
 stow --no-folding -t ~ rule-maven      # Maven build conventions rules (Copilot & Claude Code)
-stow --no-folding -t ~ skill-review-pr # PR review skill (Copilot & Claude Code)
+stow -t ~ skill-review-pr              # PR review skill (Copilot & Claude Code)
+stow -t ~ skill-create-junit-test      # JUnit test generation skill (Copilot & Claude Code)
 ```
 
 ### Remove Dotfiles
@@ -73,7 +79,7 @@ stow --no-folding -t ~ skill-review-pr # PR review skill (Copilot & Claude Code)
 To remove all symlinks:
 
 ```bash
-stow -t ~ -D vim ideavim starship rule-gof rule-java rule-maven skill-review-pr
+stow -t ~ -D vim ideavim starship rule-gof rule-java rule-maven skill-review-pr skill-create-junit-test
 ```
 
 Or remove individual packages:

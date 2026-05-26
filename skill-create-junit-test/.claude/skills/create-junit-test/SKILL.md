@@ -1,0 +1,174 @@
+---
+name: create-junit-test
+description: Create or refactor Java unit tests following JUnit 5, AssertJ, and Mockito conventions. Use when the user asks to "write tests for X", "create junit tests", "refactor tests in Y", or "test this class". Takes an optional class name or file path.
+argument-hint: [ClassName or path]
+allowed-tools: [Read, Bash, Glob, Grep, Edit, Write]
+---
+
+# Create JUnit Test
+
+Generate or refactor Java unit tests following JUnit 5, AssertJ, Mockito, and best practices: nested organization, parameterized tests, soft assertions, and AAA (Arrange / Act / Assert) structure.
+
+## Arguments
+
+Parse: first token (optional) → class name (e.g. `Calculator`) or file path (e.g. `src/main/java/com/example/Calculator.java`). If absent, infer from context or ask.
+
+## Steps
+
+### 1. Locate the Class and Existing Test
+
+- Find `src/main/java/**/<ClassName>.java` using `find` or `glob`
+- Read the source file; extract public methods, dependencies, branch structure
+- Check for existing `src/test/java/**/<ClassName>Test.java`; read if found
+
+### 2. Detect Available Libraries
+
+Run one check across `pom.xml` / `build.gradle*`:
+
+```bash
+{ grep -E "junit.jupiter|junit.api|junit.engine|assertj|mockito" pom.xml build.gradle* 2>/dev/null | head -3; } | sort | uniq
+```
+
+Assume JUnit 5 + AssertJ + Mockito. If detection suggests JUnit 4, offer fallback (plain asserts).
+
+### 3. Analyze Class Structure
+
+Extract:
+- **Public method signatures** — what each method takes and returns
+- **Dependencies** — constructor params / fields. Mock if: external service, I/O, network, database. Real if: data class, value object, immutable DTO.
+- **All execution paths** — branches (`if`/`switch`), exception throws, null handling, boundary conditions (empty, zero, max, min)
+- **Assertion targets** — what should the test verify? Return value? Object state? Exception type & message? Side effects (void methods)?
+
+### 4. Generate Test Class
+
+Canonical example (shows all patterns naturally):
+
+```java
+package com.example;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class OrderServiceTest {
+
+    @Mock
+    PaymentGateway paymentGateway;
+
+    OrderService subject;
+
+    @BeforeEach
+    void setUp() {
+        subject = new OrderService(paymentGateway);
+    }
+
+    @ParameterizedTest
+    @CsvSource({ "10.0, ACCEPTED", "50.0, ACCEPTED" })
+    void whenPaymentSucceeds_thenCreateOrder(double amount, String status) {
+        // Arrange
+        when(paymentGateway.charge(amount)).thenReturn(true);
+
+        // Act
+        var order = subject.createOrder(amount);
+
+        // Assert
+        assertThat(order).returns(status, Order::status);
+    }
+
+    @Test
+    void whenPaymentFails_thenThrowPaymentException() {
+        // Arrange
+        when(paymentGateway.charge(100.0)).thenReturn(false);
+
+        // Act & Assert
+        assertThatThrownBy(() -> subject.createOrder(100.0))
+            .isInstanceOf(PaymentFailedException.class)
+            .hasMessage("Payment declined");
+    }
+
+    @Test
+    void whenChargeThrowsException_thenPropagateException() {
+        // Arrange
+        when(paymentGateway.charge(100.0))
+            .thenThrow(new NetworkException("Connection timeout"));
+
+        // Act & Assert
+        assertThatThrownBy(() -> subject.createOrder(100.0))
+            .isInstanceOf(NetworkException.class);
+    }
+}
+```
+
+### 5. Conventions (all embedded above)
+
+**Test class structure:**
+- One `<ClassName>Test` per class under test
+- Field `subject` (no access modifier, no `final`) initialized in `@BeforeEach setUp()`
+- Test methods: `when<Condition>_then<Expectation>` naming (self-documenting; `@DisplayName` optional if method name is clear). One test = one assertion focus = one expected outcome.
+- Use `@Nested` classes only when a class has 5+ public methods or multiple test groups per method (simplifies navigation; not required for small test classes)
+
+**Mocking:**
+- Mock external dependencies only: database, HTTP client, message queue, file system, clock, random, external service interfaces. Do NOT mock data classes, DTOs, value objects.
+- Declare with `@Mock` annotation (no modifier, no `final`)
+- Add `@ExtendWith(MockitoExtension.class)` at class level
+- Stub return values: `when(mock.method(arg)).thenReturn(value)` or throw exceptions: `.thenThrow(new Exception())`
+- **Do NOT call `verify()` on stubbed return-value methods** — strict stubs fail automatically if unused. Use `verify()` only for void methods where invocation is the sole assertion.
+
+**Assertions (AssertJ — import explicitly, no wildcards per java.md):**
+- `assertThat(result).isEqualTo(expected)` — single value
+- `assertThat(subject).returns(expectedValue, Subject::getField)` — extract field and assert
+- `assertThatThrownBy(() -> call()).isInstanceOf(X.class).hasMessage("…")` — exception type and message
+- Chain multiple conditions: `assertThat(result).isNotNull().isGreaterThan(0).hasSize(3)`
+- `SoftAssertions.assertSoftly(s -> { s.assertThat(a).isEqualTo(x); s.assertThat(b).isEqualTo(y); })` — multiple independent assertions on different objects, all collected before failure
+
+**Parameterized tests:**
+- Replace repeated logic with `@ParameterizedTest`
+- Sources: `@CsvSource({…})`, `@MethodSource("methodName")`, `@ValueSource(strings={…})`, `@EnumSource`
+- No `final` on parameters
+
+**AAA structure (blank lines between sections):**
+```
+// Arrange: set up test data, stubs, initial state
+// Act: call the method under test
+// Assert: verify result and side effects
+```
+
+**Branch coverage:**
+- One assertion focus per test method (one test verifies one expected outcome)
+- Test behaviour, not implementation — test what the method does (happy path, edge cases, errors), not how it does it
+- All execution paths: happy path → edge cases (empty input, null, boundaries, zero, negative) → error paths (exception throws, validation failures) → all conditional branches (`if`, `switch`, `&&`, `||`)
+- Never use `if` or loops in test code — use `@ParameterizedTest` instead to test multiple inputs
+
+**Test data:**
+- Simple values (primitives, strings): construct inline (`new Order("123", 100.0)`)
+- Complex objects: create a `<ClassName>TestFixtures` or `<ClassName>Mother` class (package-private in same test directory) with static builder methods. Example: `OrderTestFixtures.anOrder().withStatus(SHIPPED).withCustomer("Alice").build()`
+- If builder doesn't exist: generate it with fluent builder pattern (private constructor, withX() methods, build() returns instance)
+- Always create fresh instances per test — never share mutable state between tests
+
+**Fields:**
+- Test fields: no access modifier, no `final` (exception to java.md)
+- Parameterized parameters: no `final`
+
+### 6. Write to File
+
+- Edit existing `<ClassName>Test.java` or Write to `src/test/java/<package>/<ClassName>Test.java`
+- Verify imports, syntax, method coverage
+
+## Edge Cases
+
+- **No public methods:** Suggest integration tests or testing via internal usage
+- **Constructor exceptions:** Separate test method for exception path
+- **Static methods only:** Test via static import or class reference (no subject)
+- **Inner classes:** Test via public inner class constructor or enclosing class reference
+- **Missing libraries:** Suggest adding JUnit 5, AssertJ, Mockito to build config
+- **Kotlin:** Adapt syntax (data classes, extension functions) but follow same conventions
+- **Existing non-conforming tests:** Refactor incrementally; explain each change
