@@ -23,7 +23,7 @@ Find `src/main/java/**/<ClassName>.java` and read it. Extract public methods, de
 ### 2. Detect Libraries
 
 ```bash
-grep -E "junit.jupiter|assertj|mockito" pom.xml build.gradle* 2>/dev/null | head -3 | sort | uniq
+grep -rE "junit.jupiter|junit.api|junit.engine|assertj|mockito" pom.xml build.gradle* 2>/dev/null | sort -u | head -10
 ```
 
 Assume JUnit 5 + AssertJ + Mockito; fallback to JUnit 4 asserts if needed.
@@ -65,19 +65,24 @@ class OrderServiceTest {
     }
 
     @ParameterizedTest
-    @CsvSource({ "10.0, ACCEPTED", "50.0, ACCEPTED" })
-    void whenPaymentSucceeds_thenCreateOrder(double amount, String status) {
-        when(paymentGateway.charge(amount)).thenReturn(true);
+    @CsvSource({ "10.0, ACCEPTED", "0.0, REJECTED" })
+    void whenPaymentResult_thenOrderReflectsStatus(double amount, String status) {
+        // Arrange
+        when(paymentGateway.charge(amount)).thenReturn(amount > 0);
 
+        // Act
         var order = subject.createOrder(amount);
 
+        // Assert
         assertThat(order).returns(status, Order::status);
     }
 
     @Test
     void whenPaymentFails_thenThrowPaymentException() {
+        // Arrange
         when(paymentGateway.charge(100.0)).thenReturn(false);
 
+        // Act & Assert
         assertThatThrownBy(() -> subject.createOrder(100.0))
             .isInstanceOf(PaymentFailedException.class)
             .hasMessage("Payment declined");
@@ -85,9 +90,11 @@ class OrderServiceTest {
 
     @Test
     void whenChargeThrowsException_thenPropagateException() {
+        // Arrange
         when(paymentGateway.charge(100.0))
             .thenThrow(new NetworkException("Connection timeout"));
 
+        // Act & Assert
         assertThatThrownBy(() -> subject.createOrder(100.0))
             .isInstanceOf(NetworkException.class);
     }
@@ -99,9 +106,9 @@ class OrderServiceTest {
 - Test class: `<ClassName>Test` (add `@ExtendWith(MockitoExtension.class)` only if using mocks)
 - Field `subject` (no modifier, no `final`) → initialized in `@BeforeEach`
 - Test methods: `when<Condition>_then<Expectation>` (one test = one assertion focus); @DisplayName optional if method name is clear
-- Use `@Nested` only when 5+ public methods or multiple test groups per method (simplifies navigation)
-- **Mocking:** mock external services/I/O/database; never mock data classes/DTOs. Declare with `@Mock` (no modifier, no `final`); `@ExtendWith(MockitoExtension.class)` at class; stub with `when(mock.method()).thenReturn(value)` or `.thenThrow(…)`; do NOT `verify()` on stubs (strict stubs fail if unused)
-- **Assertions:** `assertThat(result).isEqualTo(x)`, `assertThat(subject).returns(x, Subject::getField)`, `assertThatThrownBy(…).isInstanceOf(…).hasMessage(…)`, chain conditions, `SoftAssertions.assertSoftly()` for independent assertions on different objects
+- Use `@Nested` only when 5+ public methods or multiple test groups per method — one `@Nested` class per public method, `@DisplayName("methodName()")` on each. Example: `@Nested @DisplayName("divide()") class Divide { @Test void whenDivisorIsZero_thenThrows() {...} }`
+- **Mocking:** mock external services/I/O/database; never mock data classes/DTOs. Declare with `@Mock` (no modifier, no `final`); `@ExtendWith(MockitoExtension.class)` at class; stub with `when(mock.method()).thenReturn(value)` or `.thenThrow(…)`; do NOT `verify()` on stubs (strict stubs fail if unused); do NOT use `@InjectMocks` — construct `subject` manually in `@BeforeEach` so constructor changes are caught at compile time
+- **Assertions:** `assertThat(result).isEqualTo(x)`, `assertThat(subject).returns(x, Subject::getField)`, `assertThatThrownBy(…).isInstanceOf(…).hasMessage(…)`, chain conditions, `SoftAssertions.assertSoftly()` for multiple properties of the same object so all failures are reported at once
 - **Parameterized:** `@ParameterizedTest` + `@CsvSource` / `@MethodSource` / `@ValueSource`; no `final` on params; replaces loops/conditionals
 - **AAA:** Arrange / Act / Assert with blank-line separators
 - **Coverage:** test behaviour not implementation; all paths (happy, edges, errors, all branches); no `if`/loops in test code

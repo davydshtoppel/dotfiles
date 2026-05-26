@@ -26,7 +26,7 @@ Parse: first token (optional) → class name (e.g. `Calculator`) or file path (e
 Run one check across `pom.xml` / `build.gradle*`:
 
 ```bash
-{ grep -E "junit.jupiter|junit.api|junit.engine|assertj|mockito" pom.xml build.gradle* 2>/dev/null | head -3; } | sort | uniq
+grep -rE "junit.jupiter|junit.api|junit.engine|assertj|mockito" pom.xml build.gradle* 2>/dev/null | sort -u | head -10
 ```
 
 Assume JUnit 5 + AssertJ + Mockito. If detection suggests JUnit 4, offer fallback (plain asserts).
@@ -72,10 +72,10 @@ class OrderServiceTest {
     }
 
     @ParameterizedTest
-    @CsvSource({ "10.0, ACCEPTED", "50.0, ACCEPTED" })
-    void whenPaymentSucceeds_thenCreateOrder(double amount, String status) {
+    @CsvSource({ "10.0, ACCEPTED", "0.0, REJECTED" })
+    void whenPaymentResult_thenOrderReflectsStatus(double amount, String status) {
         // Arrange
-        when(paymentGateway.charge(amount)).thenReturn(true);
+        when(paymentGateway.charge(amount)).thenReturn(amount > 0);
 
         // Act
         var order = subject.createOrder(amount);
@@ -122,6 +122,7 @@ class OrderServiceTest {
 - Add `@ExtendWith(MockitoExtension.class)` at class level
 - Stub return values: `when(mock.method(arg)).thenReturn(value)` or throw exceptions: `.thenThrow(new Exception())`
 - **Do NOT call `verify()` on stubbed return-value methods** — strict stubs fail automatically if unused. Use `verify()` only for void methods where invocation is the sole assertion.
+- **Do NOT use `@InjectMocks`** — prefer explicit constructor injection in `@BeforeEach setUp()`. `@InjectMocks` silently bypasses constructor signature changes and hides missing dependencies.
 
 **Assertions (AssertJ — import explicitly, no wildcards per java.md):**
 - `assertThat(result).isEqualTo(expected)` — single value
