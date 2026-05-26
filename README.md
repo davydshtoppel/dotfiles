@@ -7,12 +7,12 @@ Personal configuration files for editor and shell environments.
 - **vim/.vimrc** - Vim editor configuration with plugins and keybindings
 - **ideavim/.ideavimrc** - IdeaVim plugin configuration for JetBrains IDEs
 - **starship/.config/starship.toml** - Starship shell prompt configuration
-- **rule-gof/.github/gof.instructions.md** - GitHub Copilot instruction for OOP design patterns
+- **rule-gof/.copilot/instructions/gof.instructions.md** - GitHub Copilot instruction for OOP design patterns
 - **rule-gof/.claude/rules/gof.md** - Claude Code rule for OOP design patterns
-- **rule-java/.github/java.instructions.md** - GitHub Copilot instruction for Java style conventions
+- **rule-java/.copilot/instructions/java.instructions.md** - GitHub Copilot instruction for Java style conventions
 - **rule-java/.claude/rules/java.md** - Claude Code rule for Java style conventions
 - **skill-review-pr/.claude/skills/review-pr/SKILL.md** - Claude Code `/review-pr` skill for pure-git PR review
-- **skill-review-pr/.github/skills/review-pr/SKILL.md** - GitHub Copilot equivalent for PR review
+- **skill-review-pr/.copilot/skills/review-pr/SKILL.md** - GitHub Copilot equivalent for PR review
 
 ## Installation
 
@@ -43,11 +43,11 @@ This creates symbolic links for:
 - `vim/.vimrc` → `~/.vimrc`
 - `ideavim/.ideavimrc` → `~/.ideavimrc`
 - `starship/.config/starship.toml` → `~/.config/starship.toml`
-- `rule-gof/.github/gof.instructions.md` → `~/.github/gof.instructions.md`
+- `rule-gof/.copilot/instructions/gof.instructions.md` → `~/.copilot/instructions/gof.instructions.md`
 - `rule-gof/.claude/rules/gof.md` → `~/.claude/rules/gof.md`
-- `rule-java/.github/java.instructions.md` → `~/.github/java.instructions.md`
+- `rule-java/.copilot/instructions/java.instructions.md` → `~/.copilot/instructions/java.instructions.md`
 - `rule-java/.claude/rules/java.md` → `~/.claude/rules/java.md`
-- `skill-review-pr/.github/skills/review-pr/SKILL.md` → `~/.github/skills/review-pr/SKILL.md`
+- `skill-review-pr/.copilot/skills/review-pr/SKILL.md` → `~/.copilot/skills/review-pr/SKILL.md`
 - `skill-review-pr/.claude/skills/review-pr/SKILL.md` → `~/.claude/skills/review-pr/SKILL.md`
 
 ### Apply Individual Packages

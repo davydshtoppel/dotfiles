@@ -8,12 +8,12 @@ This is a personal dotfiles repository containing editor and shell configuration
 - **vim/.vimrc** - Vim editor configuration with plugins and keybindings
 - **ideavim/.ideavimrc** - IdeaVim plugin configuration for JetBrains IDEs
 - **starship/.config/starship.toml** - Starship shell prompt configuration
-- **rule-gof/.github/gof.instructions.md** - GitHub Copilot instruction for OOP design patterns
+- **rule-gof/.copilot/instructions/gof.instructions.md** - GitHub Copilot instruction for OOP design patterns
 - **rule-gof/.claude/rules/gof.md** - Claude Code rule for Gang of Four patterns and SOLID principles
-- **rule-java/.github/java.instructions.md** - GitHub Copilot instruction for Java style conventions
+- **rule-java/.copilot/instructions/java.instructions.md** - GitHub Copilot instruction for Java style conventions
 - **rule-java/.claude/rules/java.md** - Claude Code rule for Java style conventions
 - **skill-review-pr/.claude/skills/review-pr/SKILL.md** - Claude Code `/review-pr` skill for pure-git PR review
-- **skill-review-pr/.github/skills/review-pr/SKILL.md** - GitHub Copilot equivalent for PR review
+- **skill-review-pr/.copilot/skills/review-pr/SKILL.md** - GitHub Copilot equivalent for PR review
 
 ## Architecture & Key Relationships
 
@@ -38,30 +38,30 @@ Uses a custom Gruvbox Dark color palette with a multi-segment format. Each segme
 
 ### rule-gof Configuration
 Contains design pattern guidance for code generation tools:
-- **`.github/gof.instructions.md`** - GitHub Copilot instruction file with Gang of Four patterns, SOLID principles, and OOP best practices. Applied to Python, Java, TypeScript, JavaScript, and C# files.
+- **`.copilot/instructions/gof.instructions.md`** - GitHub Copilot instruction file with Gang of Four patterns, SOLID principles, and OOP best practices. Applied to Python, Java, TypeScript, JavaScript, and C# files.
 - **`.claude/rules/gof.md`** - Claude Code rule file auto-loaded for the same file types. Provides the same design pattern guidance when working in Claude Code.
 
 Both files cover creational, structural, and behavioral patterns, with emphasis on composition over inheritance, loose coupling, and clean code practices.
 
-**Installation note:** When stowing rule-gof, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-gof`. This allows other rules to coexist in `~/.claude/rules/` and `~/.github/`.
+**Installation note:** When stowing rule-gof, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-gof`. This allows other rules to coexist in `~/.claude/rules/` and `~/.copilot/instructions/`.
 
 ### rule-java Configuration
 Contains Java style guidance for code generation tools:
-- **`.github/java.instructions.md`** - GitHub Copilot instruction file with Sun Checkstyle conventions, JSpecify nullability, and JDK 21 idioms. Applied to Java files.
+- **`.copilot/instructions/java.instructions.md`** - GitHub Copilot instruction file with Sun Checkstyle conventions, JSpecify nullability, and JDK 21 idioms. Applied to Java files.
 - **`.claude/rules/java.md`** - Claude Code rule file auto-loaded for Java files. Provides the same style guidance when working in Claude Code.
 
 Both files cover naming conventions, import ordering, nullability annotations, the `final` keyword, and JDK 21 idioms (switch expressions, `var`, records, sealed classes, pattern matching, text blocks).
 
-**Installation note:** When stowing rule-java, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-java`. This allows other rules to coexist in `~/.claude/rules/` and `~/.github/`.
+**Installation note:** When stowing rule-java, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-java`. This allows other rules to coexist in `~/.claude/rules/` and `~/.copilot/instructions/`.
 
 ### skill-review-pr Configuration
 Contains a user-invoked skill for code review using pure git:
 - **`.claude/skills/review-pr/SKILL.md`** - Claude Code `/review-pr` slash command. Reviews a pull request or merge request by accepting a PR/MR number, fetching the remote ref using git, and comparing it against the current branch (or a specified base branch). Works with GitHub, GitLab, Gitea, Forgejo, and any git remote that exposes PR refs — no `gh` CLI required.
-- **`.github/skills/review-pr/SKILL.md`** - GitHub Copilot agent-mode prompt with equivalent workflow.
+- **`.copilot/skills/review-pr/SKILL.md`** - GitHub Copilot agent-mode prompt with equivalent workflow.
 
 Both files perform the same steps: fetch the PR branch via remote refs (tries GitHub/Gitea style first, then GitLab/Bitbucket), compute the merge base, collect commit list + diff stat + full diff, read changed files for full context, and output a structured review (summary, per-file analysis with concerns and suggestions, overall assessment).
 
-**Installation note:** When stowing skill-review-pr, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ skill-review-pr`. This allows other skills to coexist in `~/.claude/skills/` and `~/.github/skills/`.
+**Installation note:** When stowing skill-review-pr, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ skill-review-pr`. This allows other skills to coexist in `~/.claude/skills/` and `~/.copilot/skills/`.
 
 ## Important Configuration Details
 
