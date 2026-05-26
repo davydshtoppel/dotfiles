@@ -12,6 +12,8 @@ This is a personal dotfiles repository containing editor and shell configuration
 - **rule-gof/.claude/rules/gof.md** - Claude Code rule for Gang of Four patterns and SOLID principles
 - **rule-java/.copilot/instructions/java.instructions.md** - GitHub Copilot instruction for Java style conventions
 - **rule-java/.claude/rules/java.md** - Claude Code rule for Java style conventions
+- **rule-maven/.copilot/instructions/maven.instructions.md** - GitHub Copilot instruction for Maven build conventions
+- **rule-maven/.claude/rules/maven.md** - Claude Code rule for Maven build conventions
 - **skill-review-pr/.claude/skills/review-pr/SKILL.md** - Claude Code `/review-pr` skill for pure-git PR review
 - **skill-review-pr/.copilot/skills/review-pr/SKILL.md** - GitHub Copilot equivalent for PR review
 
@@ -53,6 +55,17 @@ Contains Java style guidance for code generation tools:
 Both files cover naming conventions, import ordering, nullability annotations, the `final` keyword, and JDK 21 idioms (switch expressions, `var`, records, sealed classes, pattern matching, text blocks).
 
 **Installation note:** When stowing rule-java, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-java`. This allows other rules to coexist in `~/.claude/rules/` and `~/.copilot/instructions/`.
+
+### rule-maven Configuration
+Contains Maven build conventions for code generation tools:
+- **`.copilot/instructions/maven.instructions.md`** - GitHub Copilot instruction file with Maven command best practices: `-f` for module targeting, `-T 1C` for parallelism, and build cache flags. Applied to POM files and JVM language source files.
+- **`.claude/rules/maven.md`** - Claude Code rule file auto-loaded for the same file types. Provides the same Maven build conventions when working in Claude Code.
+
+Both files cover module targeting (using `-f` instead of `-pl`), parallel execution (`-T 1C`), disabling build cache (`-Dmaven.build.cache.enabled=false`), and output quality flags.
+
+Applies to: `**/pom.xml`, `**/*.java`, `**/*.kt`, `**/*.kts`, `**/*.scala`, `**/*.groovy` — all common JVM language files where Maven builds are used.
+
+**Installation note:** When stowing rule-maven, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-maven`. This allows other rules to coexist in `~/.claude/rules/` and `~/.copilot/instructions/`.
 
 ### skill-review-pr Configuration
 Contains a user-invoked skill for code review using pure git:
