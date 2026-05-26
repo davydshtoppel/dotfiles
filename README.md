@@ -11,6 +11,8 @@ Personal configuration files for editor and shell environments.
 - **rule-gof/.claude/rules/gof.md** - Claude Code rule for OOP design patterns
 - **rule-java/.github/java.instructions.md** - GitHub Copilot instruction for Java style conventions
 - **rule-java/.claude/rules/java.md** - Claude Code rule for Java style conventions
+- **skill-review-pr/.claude/skills/review-pr/SKILL.md** - Claude Code `/review-pr` skill for pure-git PR review
+- **skill-review-pr/.github/skills/review-pr/SKILL.md** - GitHub Copilot equivalent for PR review
 
 ## Installation
 
@@ -34,7 +36,7 @@ Since this repository is typically cloned to a location other than the home dire
 ```bash
 cd /path/to/dotfiles
 stow -t ~ vim ideavim starship
-stow --no-folding -t ~ rule-gof rule-java
+stow --no-folding -t ~ rule-gof rule-java skill-review-pr
 ```
 
 This creates symbolic links for:
@@ -45,6 +47,8 @@ This creates symbolic links for:
 - `rule-gof/.claude/rules/gof.md` → `~/.claude/rules/gof.md`
 - `rule-java/.github/java.instructions.md` → `~/.github/java.instructions.md`
 - `rule-java/.claude/rules/java.md` → `~/.claude/rules/java.md`
+- `skill-review-pr/.github/skills/review-pr/SKILL.md` → `~/.github/skills/review-pr/SKILL.md`
+- `skill-review-pr/.claude/skills/review-pr/SKILL.md` → `~/.claude/skills/review-pr/SKILL.md`
 
 ### Apply Individual Packages
 
@@ -56,6 +60,7 @@ stow -t ~ ideavim         # IdeaVim configuration only
 stow -t ~ starship        # Starship configuration only
 stow --no-folding -t ~ rule-gof        # OOP design patterns rules (Copilot & Claude Code)
 stow --no-folding -t ~ rule-java       # Java style conventions rules (Copilot & Claude Code)
+stow --no-folding -t ~ skill-review-pr # PR review skill (Copilot & Claude Code)
 ```
 
 ### Remove Dotfiles
@@ -63,7 +68,7 @@ stow --no-folding -t ~ rule-java       # Java style conventions rules (Copilot &
 To remove all symlinks:
 
 ```bash
-stow -t ~ -D vim ideavim starship rule-gof rule-java
+stow -t ~ -D vim ideavim starship rule-gof rule-java skill-review-pr
 ```
 
 Or remove individual packages:

@@ -12,6 +12,8 @@ This is a personal dotfiles repository containing editor and shell configuration
 - **rule-gof/.claude/rules/gof.md** - Claude Code rule for Gang of Four patterns and SOLID principles
 - **rule-java/.github/java.instructions.md** - GitHub Copilot instruction for Java style conventions
 - **rule-java/.claude/rules/java.md** - Claude Code rule for Java style conventions
+- **skill-review-pr/.claude/skills/review-pr/SKILL.md** - Claude Code `/review-pr` skill for pure-git PR review
+- **skill-review-pr/.github/skills/review-pr/SKILL.md** - GitHub Copilot equivalent for PR review
 
 ## Architecture & Key Relationships
 
@@ -51,6 +53,15 @@ Contains Java style guidance for code generation tools:
 Both files cover naming conventions, import ordering, nullability annotations, the `final` keyword, and JDK 21 idioms (switch expressions, `var`, records, sealed classes, pattern matching, text blocks).
 
 **Installation note:** When stowing rule-java, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-java`. This allows other rules to coexist in `~/.claude/rules/` and `~/.github/`.
+
+### skill-review-pr Configuration
+Contains a user-invoked skill for code review using pure git:
+- **`.claude/skills/review-pr/SKILL.md`** - Claude Code `/review-pr` slash command. Reviews a pull request or merge request by accepting a PR/MR number, fetching the remote ref using git, and comparing it against the current branch (or a specified base branch). Works with GitHub, GitLab, Gitea, Forgejo, and any git remote that exposes PR refs — no `gh` CLI required.
+- **`.github/skills/review-pr/SKILL.md`** - GitHub Copilot agent-mode prompt with equivalent workflow.
+
+Both files perform the same steps: fetch the PR branch via remote refs (tries GitHub/Gitea style first, then GitLab/Bitbucket), compute the merge base, collect commit list + diff stat + full diff, read changed files for full context, and output a structured review (summary, per-file analysis with concerns and suggestions, overall assessment).
+
+**Installation note:** When stowing skill-review-pr, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ skill-review-pr`. This allows other skills to coexist in `~/.claude/skills/` and `~/.github/skills/`.
 
 ## Important Configuration Details
 
