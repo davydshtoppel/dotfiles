@@ -22,8 +22,13 @@ Find `src/main/java/**/<ClassName>.java` and read it. Extract public methods, de
 
 ### 2. Detect Libraries
 
+Detect build tool (`pom.xml` → Maven, `build.gradle*` → Gradle) and query dependencies:
+
 ```bash
-grep -rE "junit.jupiter|junit.api|junit.engine|assertj|mockito" pom.xml build.gradle* 2>/dev/null | sort -u | head -10
+# Maven
+mvn dependency:list -q 2>/dev/null | grep -iE "junit|assertj|mockito"
+# Gradle
+./gradlew dependencies --configuration testRuntimeClasspath -q 2>/dev/null | grep -iE "junit|assertj|mockito"
 ```
 
 Assume JUnit 5 + AssertJ + Mockito; fallback to JUnit 4 asserts if needed.
@@ -105,15 +110,15 @@ class OrderServiceTest {
 
 - Test class: `<ClassName>Test` (add `@ExtendWith(MockitoExtension.class)` only if using mocks)
 - Field `subject` (no modifier, no `final`) → initialized in `@BeforeEach`
-- Test methods: `when<Condition>_then<Expectation>` (one test = one assertion focus); @DisplayName optional if method name is clear
-- Use `@Nested` only when 5+ public methods or multiple test groups per method — one `@Nested` class per public method, `@DisplayName("methodName()")` on each. Example: `@Nested @DisplayName("divide()") class Divide { @Test void whenDivisorIsZero_thenThrows() {...} }`
+- Test methods: `when<Condition>_then<Expectation>` with `@DisplayName` on every test method (one test = one assertion focus)
+- Use `@Nested` only when 5+ public methods or multiple test groups per method. Do not create a `@Nested` class with only one test method. `@DisplayName` is optional on `@Nested` classes with self-documenting names.
 - **Mocking:** mock external services/I/O/database; never mock data classes/DTOs. Declare with `@Mock` (no modifier, no `final`); `@ExtendWith(MockitoExtension.class)` at class; stub with `when(mock.method()).thenReturn(value)` or `.thenThrow(…)`; do NOT `verify()` on stubs (strict stubs fail if unused); do NOT use `@InjectMocks` — construct `subject` manually in `@BeforeEach` so constructor changes are caught at compile time
-- **Assertions:** `assertThat(result).isEqualTo(x)`, `assertThat(subject).returns(x, Subject::getField)`, `assertThatThrownBy(…).isInstanceOf(…).hasMessage(…)`, chain conditions, `SoftAssertions.assertSoftly()` for multiple properties of the same object so all failures are reported at once
+- **Assertions:** `assertThat(result).isEqualTo(x)`, `assertThat(subject).returns(x, Subject::getField).returns(y, Subject::getOtherField)` — chain for multiple properties of same object; prefer `.returns()` / `.extracting()` / other methods before `.satisfies()`, `assertThatThrownBy(…).isInstanceOf(…).hasMessage(…)`, chain conditions, `SoftAssertions.assertSoftly()` for independent assertions on different objects so all failures are reported at once
 - **Parameterized:** `@ParameterizedTest` + `@CsvSource` / `@MethodSource` / `@ValueSource`; no `final` on params; replaces loops/conditionals
 - **AAA:** Arrange / Act / Assert with blank-line separators
 - **Coverage:** test behaviour not implementation; all paths (happy, edges, errors, all branches); no `if`/loops in test code
 - **Test data:** inline for primitives/strings; object mother (`TestFixtures.anOrder().build()`) for complex objects; create builder if missing
-- **Field declaration:** no access modifier, no `final` (exception to java style)
+- **Field declaration:** no access modifier, no `final` on test fields (instance and static) (exception to java style); no `final` on parameterized parameters
 
 ### 6. Write to File
 

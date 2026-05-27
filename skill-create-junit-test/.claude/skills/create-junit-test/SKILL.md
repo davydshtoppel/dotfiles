@@ -23,10 +23,13 @@ Parse: first token (optional) → class name (e.g. `Calculator`) or file path (e
 
 ### 2. Detect Available Libraries
 
-Run one check across `pom.xml` / `build.gradle*`:
+Detect build tool (`pom.xml` → Maven, `build.gradle*` → Gradle) and query dependencies:
 
 ```bash
-grep -rE "junit.jupiter|junit.api|junit.engine|assertj|mockito" pom.xml build.gradle* 2>/dev/null | sort -u | head -10
+# Maven
+mvn dependency:list -q 2>/dev/null | grep -iE "junit|assertj|mockito"
+# Gradle
+./gradlew dependencies --configuration testRuntimeClasspath -q 2>/dev/null | grep -iE "junit|assertj|mockito"
 ```
 
 Assume JUnit 5 + AssertJ + Mockito. If detection suggests JUnit 4, offer fallback (plain asserts).
@@ -113,8 +116,8 @@ class OrderServiceTest {
 **Test class structure:**
 - One `<ClassName>Test` per class under test
 - Field `subject` (no access modifier, no `final`) initialized in `@BeforeEach setUp()`
-- Test methods: `when<Condition>_then<Expectation>` naming (self-documenting; `@DisplayName` optional if method name is clear). One test = one assertion focus = one expected outcome.
-- Use `@Nested` classes only when a class has 5+ public methods or multiple test groups per method (simplifies navigation; not required for small test classes)
+- Test methods: `when<Condition>_then<Expectation>` naming with `@DisplayName` on every test method. One test = one assertion focus = one expected outcome.
+- Use `@Nested` classes only when a class has 5+ public methods or multiple test groups per method. Do not create a `@Nested` class with only one test method. `@DisplayName` is optional on `@Nested` classes with self-documenting names.
 
 **Mocking:**
 - Mock external dependencies only: database, HTTP client, message queue, file system, clock, random, external service interfaces. Do NOT mock data classes, DTOs, value objects.
@@ -126,7 +129,7 @@ class OrderServiceTest {
 
 **Assertions (AssertJ — import explicitly, no wildcards per java.md):**
 - `assertThat(result).isEqualTo(expected)` — single value
-- `assertThat(subject).returns(expectedValue, Subject::getField)` — extract field and assert
+- `assertThat(subject).returns(expectedValue, Subject::getField).returns(anotherValue, Subject::getOtherField)` — multiple properties of the same object; chain `.returns()` / `.extracting()` / other purpose-built methods; use `.satisfies()` only as last resort
 - `assertThatThrownBy(() -> call()).isInstanceOf(X.class).hasMessage("…")` — exception type and message
 - Chain multiple conditions: `assertThat(result).isNotNull().isGreaterThan(0).hasSize(3)`
 - `SoftAssertions.assertSoftly(s -> { s.assertThat(a).isEqualTo(x); s.assertThat(b).isEqualTo(y); })` — multiple independent assertions on different objects, all collected before failure
@@ -156,7 +159,7 @@ class OrderServiceTest {
 - Always create fresh instances per test — never share mutable state between tests
 
 **Fields:**
-- Test fields: no access modifier, no `final` (exception to java.md)
+- Test fields (instance and static): no access modifier, no `final` (exception to java.md)
 - Parameterized parameters: no `final`
 
 ### 6. Write to File
