@@ -1,0 +1,84 @@
+---
+name: explain-pull-request
+description: Resolve a pull request or merge request number to git branches, then analyze the changes. Use when the user asks to "explain PR 123", "analyze pull request 45", "what does MR 7 do", or "explain this PR". Takes a PR/MR number and an optional base branch. Works with GitHub, Bitbucket Server, and GitLab — no gh CLI required.
+argument-hint: <pr-number> [base-branch]
+allowed-tools: [Bash]
+---
+
+# Explain Pull Request
+
+Resolve a PR/MR number to git branches using only git, then invoke the `explain-diff` skill to analyze the changes.
+
+**Important:** this skill only fetches temporary refs and reads git metadata. It never touches the working tree, the index, or the current branch — the user's local state is never affected.
+
+## Arguments
+
+The user invoked this with: `$ARGUMENTS`
+
+Parse arguments:
+- First token → `PR_NUMBER` (required, integer)
+- Second token → `BASE_BRANCH` (optional; if provided, skip Step 2)
+
+If `PR_NUMBER` is missing or not an integer, stop: `Usage: /explain-pull-request <pr-number> [base-branch]`
+
+## Step 1 — Fetch the PR Branch
+
+Try remote ref conventions in order, stopping at the first success:
+
+```bash
+# GitHub / Gitea / Forgejo
+git fetch origin "refs/pull/${PR_NUMBER}/head:pr/${PR_NUMBER}-explain"
+
+# Bitbucket Server / Data Center
+git fetch origin "refs/pull-requests/${PR_NUMBER}/from:pr/${PR_NUMBER}-explain"
+
+# GitLab
+git fetch origin "refs/merge-requests/${PR_NUMBER}/head:mr/${PR_NUMBER}-explain"
+```
+
+Record the local branch name (`pr/<N>-explain` or `mr/<N>-explain`) as `PR_BRANCH`.
+
+If all three fetches fail, report the error clearly and ask the user to provide the branch name directly and run `/explain-diff <feature-branch> <base-branch>` instead. Stop.
+
+## Step 2 — Resolve Base Branch
+
+Never use the current local branch — it belongs to the user's work, not the PR.
+
+Try each strategy in order, stopping at the first success:
+
+**a) Bitbucket Server target ref:**
+```bash
+git fetch origin "refs/pull-requests/${PR_NUMBER}/to:pr/${PR_NUMBER}-base"
+```
+If this succeeds, use `pr/${PR_NUMBER}-base` as `BASE_BRANCH`.
+
+**b) Find closest remote branch by ancestry:**
+```bash
+git --no-pager fetch origin
+git --no-pager for-each-ref --format='%(refname:short)' refs/remotes/origin \
+  | grep -v 'HEAD' \
+  | while read ref; do
+      count=$(git --no-pager rev-list "${ref}..${PR_BRANCH}" --count 2>/dev/null)
+      echo "$count $ref"
+    done \
+  | sort -n \
+  | head -1 \
+  | awk '{print $2}'
+```
+This finds the remote branch with the fewest commits ahead of the PR branch's divergence point — the most likely target. Use the result as `BASE_BRANCH`.
+
+**c) Remote default branch:**
+```bash
+git --no-pager remote show origin 2>/dev/null | grep 'HEAD branch' | awk '{print $NF}'
+```
+Prefix with `origin/` to get the full remote ref. Use as `BASE_BRANCH`.
+
+**d) Last resort:** use `origin/main`, or `origin/master` if `origin/main` does not exist.
+
+## Step 3 — Invoke explain-diff
+
+Invoke the `explain-diff` skill with the resolved branches:
+
+```
+/explain-diff <PR_BRANCH> <BASE_BRANCH>
+```

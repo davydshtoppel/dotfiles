@@ -14,8 +14,10 @@ This is a personal dotfiles repository containing editor and shell configuration
 - **rule-java/.claude/rules/java.md** - Claude Code rule for Java style conventions
 - **rule-maven/.copilot/instructions/maven.instructions.md** - GitHub Copilot instruction for Maven build conventions
 - **rule-maven/.claude/rules/maven.md** - Claude Code rule for Maven build conventions
-- **skill-review-pr/.claude/skills/review-pr/SKILL.md** - Claude Code `/review-pr` skill for pure-git PR review
-- **skill-review-pr/.copilot/skills/review-pr/SKILL.md** - GitHub Copilot equivalent for PR review
+- **skill-explain-diff/.claude/skills/explain-diff/SKILL.md** - Claude Code `/explain-diff` skill for analyzing changes between branches
+- **skill-explain-diff/.copilot/skills/explain-diff/SKILL.md** - GitHub Copilot equivalent for branch diff analysis
+- **skill-explain-pull-request/.claude/skills/explain-pull-request/SKILL.md** - Claude Code `/explain-pull-request` skill for analyzing a PR/MR by number
+- **skill-explain-pull-request/.copilot/skills/explain-pull-request/SKILL.md** - GitHub Copilot equivalent for PR analysis
 - **skill-create-junit-test/.claude/skills/create-junit-test/SKILL.md** - Claude Code `/create-junit-test` skill for generating JUnit 5 tests
 - **skill-create-junit-test/.copilot/skills/create-junit-test/SKILL.md** - GitHub Copilot equivalent for JUnit test generation
 
@@ -69,14 +71,21 @@ Applies to: `**/pom.xml`, `**/*.java`, `**/*.kt`, `**/*.kts`, `**/*.scala`, `**/
 
 **Installation note:** When stowing rule-maven, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-maven`. This allows other rules to coexist in `~/.claude/rules/` and `~/.copilot/instructions/`.
 
-### skill-review-pr Configuration
-Contains a user-invoked skill for code review using pure git:
-- **`.claude/skills/review-pr/SKILL.md`** - Claude Code `/review-pr` slash command. Reviews a pull request or merge request by accepting a PR/MR number, fetching the remote ref using git, and comparing it against the current branch (or a specified base branch). Works with GitHub, GitLab, Gitea, Forgejo, and any git remote that exposes PR refs — no `gh` CLI required.
-- **`.copilot/skills/review-pr/SKILL.md`** - GitHub Copilot agent-mode prompt with equivalent workflow.
+### skill-explain-diff Configuration
+Contains a user-invoked skill for analyzing code changes between two branches:
+- **`.claude/skills/explain-diff/SKILL.md`** - Claude Code `/explain-diff` slash command. Takes a feature branch (required) and optional base branch (defaults to current branch). Uses pure git to compute the diff, then produces an overview, a Mermaid diagram of affected components, and a categorized analysis (design, performance, complexity, concurrency, clean code) with a final result verdict.
+- **`.copilot/skills/explain-diff/SKILL.md`** - GitHub Copilot agent-mode prompt with equivalent workflow.
 
-Both files perform the same steps: fetch the PR branch via remote refs (tries GitHub/Gitea style first, then GitLab/Bitbucket), compute the merge base, collect commit list + diff stat + full diff, read changed files for full context, and output a structured review (summary, per-file analysis with concerns and suggestions, overall assessment).
+**Installation note:** When stowing skill-explain-diff, no `--no-folding` is needed — the `explain-diff/` subdirectory prevents stow from folding: `stow -t ~ skill-explain-diff`.
 
-**Installation note:** When stowing skill-review-pr, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ skill-review-pr`. This allows other skills to coexist in `~/.claude/skills/` and `~/.copilot/skills/`.
+### skill-explain-pull-request Configuration
+Contains a user-invoked skill for analyzing a pull request or merge request by number:
+- **`.claude/skills/explain-pull-request/SKILL.md`** - Claude Code `/explain-pull-request` slash command. Accepts a PR/MR number and optional base branch. Fetches the PR source branch via remote refs (tries GitHub/Gitea, then Bitbucket Server, then GitLab), resolves the target branch, and produces the same structured analysis as `explain-diff` — no `gh` CLI required.
+- **`.copilot/skills/explain-pull-request/SKILL.md`** - GitHub Copilot agent-mode prompt with equivalent workflow.
+
+Both files try three ref conventions in order: `refs/pull/${N}/head` (GitHub/Gitea/Forgejo), `refs/pull-requests/${N}/from` (Bitbucket Server/Data Center), `refs/merge-requests/${N}/head` (GitLab).
+
+**Installation note:** When stowing skill-explain-pull-request, no `--no-folding` is needed — the `explain-pull-request/` subdirectory prevents stow from folding: `stow -t ~ skill-explain-pull-request`.
 
 ### skill-create-junit-test Configuration
 Contains a user-invoked skill for generating and refactoring Java unit tests following comprehensive conventions:
