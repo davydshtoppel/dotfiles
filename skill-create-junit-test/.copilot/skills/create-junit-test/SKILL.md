@@ -1,6 +1,6 @@
 ---
 mode: 'agent'
-description: 'Create or refactor Java unit tests following JUnit 5, AssertJ, and Mockito conventions. Provide an optional class name or file path; generates tests with @Nested organization, parameterized tests, soft assertions, and AAA structure.'
+description: 'Create or refactor Java unit tests following JUnit 5, AssertJ, and Mockito conventions. Also use for test maintenance when the code under test has evolved — e.g. constructor signature changed, update tests after refactoring, fix tests to match new API. Provide an optional class name or file path; generates tests with @Nested organization, parameterized tests, soft assertions, and AAA structure.'
 tools: ['codebase', 'terminal']
 ---
 

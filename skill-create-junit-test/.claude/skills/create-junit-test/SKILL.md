@@ -1,6 +1,6 @@
 ---
 name: create-junit-test
-description: Create or refactor Java unit tests following JUnit 5, AssertJ, and Mockito conventions. Use when the user asks to "write tests for X", "create junit tests", "refactor tests in Y", or "test this class". Takes an optional class name or file path.
+description: Create or refactor Java unit tests following JUnit 5, AssertJ, and Mockito conventions. Use when the user asks to "write tests for X", "create junit tests", "refactor tests in Y", or "test this class". Also use for test maintenance when the code under test has evolved — e.g. "constructor signature changed", "update tests after refactoring", "tests broke after I changed the class", "fix tests to match new API". Takes an optional class name or file path.
 argument-hint: [ClassName or path]
 allowed-tools: [Read, Bash, Glob, Grep, Edit, Write]
 ---

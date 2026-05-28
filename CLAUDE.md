@@ -88,7 +88,7 @@ Both files try three ref conventions in order: `refs/pull/${N}/head` (GitHub/Git
 **Installation note:** When stowing skill-explain-pull-request, no `--no-folding` is needed — the `explain-pull-request/` subdirectory prevents stow from folding: `stow -t ~ skill-explain-pull-request`.
 
 ### skill-create-junit-test Configuration
-Contains a user-invoked skill for generating and refactoring Java unit tests following comprehensive conventions:
+Contains a user-invoked skill for generating, refactoring, and maintaining Java unit tests following comprehensive conventions. Use when writing new tests, refactoring existing tests, or for test maintenance when the code under test has evolved (constructor changed, API updated, tests broken after refactoring):
 - **`.claude/skills/create-junit-test/SKILL.md`** - Claude Code `/create-junit-test` slash command. Generates or refactors Java unit tests following JUnit 5, AssertJ, Mockito, and best practices (AAA structure, @Nested organization, parameterized tests, soft assertions, no mocks for data classes, etc.).
 - **`.copilot/skills/create-junit-test/SKILL.md`** - GitHub Copilot agent-mode prompt with equivalent workflow.
 
