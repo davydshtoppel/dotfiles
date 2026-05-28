@@ -58,14 +58,15 @@ If this succeeds, use `pr/${PR_NUMBER}-base` as `BASE_BRANCH`.
 ```bash
 GIT_TERMINAL_PROMPT=0 git --no-pager fetch origin 2>&1
 git --no-pager for-each-ref --format='%(refname:short)' refs/remotes/origin \
-  | grep -v 'HEAD' \
+  | grep -v '^origin$' \
+  | grep -v '/HEAD$' \
   | while read ref; do
       count=$(git --no-pager rev-list "${ref}..${PR_BRANCH}" --count 2>/dev/null)
       echo "$count $ref"
     done \
   | sort -n \
   | head -1 \
-  | awk '{print $2}'
+  | awk '{print $NF}'
 ```
 This finds the remote branch with the fewest commits ahead of the PR branch's divergence point — the most likely target. Use the result as `BASE_BRANCH`.
 
