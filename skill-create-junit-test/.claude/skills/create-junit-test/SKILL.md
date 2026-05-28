@@ -92,10 +92,11 @@ class OrderServiceTest {
     @Test
     void whenPaymentFails_thenThrowPaymentException() {
         // Arrange
-        when(paymentGateway.charge(100.0)).thenReturn(false);
+        var amount = 100.0;
+        when(paymentGateway.charge(amount)).thenReturn(false);
 
         // Act & Assert
-        assertThatThrownBy(() -> subject.createOrder(100.0))
+        assertThatThrownBy(() -> subject.createOrder(amount))
             .isInstanceOf(PaymentFailedException.class)
             .hasMessage("Payment declined");
     }
@@ -103,11 +104,12 @@ class OrderServiceTest {
     @Test
     void whenChargeThrowsException_thenPropagateException() {
         // Arrange
-        when(paymentGateway.charge(100.0))
+        var amount = 100.0;
+        when(paymentGateway.charge(amount))
             .thenThrow(new NetworkException("Connection timeout"));
 
         // Act & Assert
-        assertThatThrownBy(() -> subject.createOrder(100.0))
+        assertThatThrownBy(() -> subject.createOrder(amount))
             .isInstanceOf(NetworkException.class);
     }
 }
@@ -147,6 +149,7 @@ class OrderServiceTest {
 // Act: call the method under test
 // Assert: verify result and side effects
 ```
+- **Input variables:** In non-parameterized tests, assign each input value to a named `var` in the Arrange section (e.g. `var amount = 100.0;`). Reference that variable in both stub setup and the act call — never repeat the same literal twice in one test. Name the variable after its semantic role, not its type. (Parameterized tests already have named parameters, so this rule doesn't apply there.)
 
 **Branch coverage:**
 - One assertion focus per test method (one test verifies one expected outcome)

@@ -87,10 +87,11 @@ class OrderServiceTest {
     @Test
     void whenPaymentFails_thenThrowPaymentException() {
         // Arrange
-        when(paymentGateway.charge(100.0)).thenReturn(false);
+        var amount = 100.0;
+        when(paymentGateway.charge(amount)).thenReturn(false);
 
         // Act & Assert
-        assertThatThrownBy(() -> subject.createOrder(100.0))
+        assertThatThrownBy(() -> subject.createOrder(amount))
             .isInstanceOf(PaymentFailedException.class)
             .hasMessage("Payment declined");
     }
@@ -98,11 +99,12 @@ class OrderServiceTest {
     @Test
     void whenChargeThrowsException_thenPropagateException() {
         // Arrange
-        when(paymentGateway.charge(100.0))
+        var amount = 100.0;
+        when(paymentGateway.charge(amount))
             .thenThrow(new NetworkException("Connection timeout"));
 
         // Act & Assert
-        assertThatThrownBy(() -> subject.createOrder(100.0))
+        assertThatThrownBy(() -> subject.createOrder(amount))
             .isInstanceOf(NetworkException.class);
     }
 }
@@ -117,7 +119,7 @@ class OrderServiceTest {
 - **Mocking:** mock external services/I/O/database; never mock data classes/DTOs. Declare with `@Mock` (no modifier, no `final`); `@ExtendWith(MockitoExtension.class)` at class; stub with `when(mock.method()).thenReturn(value)` or `.thenThrow(…)`; do NOT `verify()` on stubs (strict stubs fail if unused); do NOT use `@InjectMocks` — construct `subject` manually in `@BeforeEach` so constructor changes are caught at compile time
 - **Assertions:** `assertThat(result).isEqualTo(x)`, `assertThat(subject).returns(x, Subject::getField).returns(y, Subject::getOtherField)` — chain for multiple properties of same object; prefer `.returns()` / `.extracting()` / other methods before `.satisfies()`, `assertThatThrownBy(…).isInstanceOf(…).hasMessage(…)`, chain conditions, `SoftAssertions.assertSoftly()` for independent assertions on different objects so all failures are reported at once
 - **Parameterized:** `@ParameterizedTest` + `@CsvSource` / `@MethodSource` / `@ValueSource`; no `final` on params; replaces loops/conditionals
-- **AAA:** Arrange / Act / Assert with blank-line separators
+- **AAA:** Arrange / Act / Assert with blank-line separators. In non-parameterized tests, assign each input value to a named `var` in Arrange (`var amount = 100.0;`) and reference it in both stub and act call — never repeat the same literal twice in one test; name after semantic role, not type. (Parameterized tests have named parameters, so this doesn't apply there.)
 - **Coverage:** test behaviour not implementation; cover each distinct code path **exactly once** — edge cases (null, zero, empty, negative) that all hit the same branch belong in one `@ParameterizedTest`, not separate methods. Signal for consolidation: two method names that differ only by input description → merge into `@ParameterizedTest`. No `if`/loops in test code.
 - **Test data:** inline for primitives/strings; object mother (`TestFixtures.anOrder().build()`) for complex objects; create builder if missing
 - **Field declaration:** no access modifier, no `final` on test fields (instance and static) (exception to java style); no `final` on parameterized parameters
