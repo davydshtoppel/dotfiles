@@ -54,21 +54,16 @@ GIT_TERMINAL_PROMPT=0 git fetch origin "refs/pull-requests/${PR_NUMBER}/to:pr/${
 ```
 If this succeeds, use `pr/${PR_NUMBER}-base` as `BASE_BRANCH`.
 
-**b) Find closest remote branch by ancestry:**
+**b) Scan commit ancestry for the first remote tracking ref:**
 ```bash
-GIT_TERMINAL_PROMPT=0 git --no-pager fetch origin 2>&1
-git --no-pager for-each-ref --format='%(refname:short)' refs/remotes/origin \
-  | grep -v '^origin$' \
+git --no-pager log --format='%D' "${PR_BRANCH}" \
+  | tr ',' '\n' \
+  | sed 's/^ *//' \
+  | grep -E '^origin/.' \
   | grep -v '/HEAD$' \
-  | while read ref; do
-      count=$(git --no-pager rev-list "${ref}..${PR_BRANCH}" --count 2>/dev/null)
-      echo "$count $ref"
-    done \
-  | sort -n \
-  | head -1 \
-  | awk '{print $NF}'
+  | head -1
 ```
-This finds the remote branch with the fewest commits ahead of the PR branch's divergence point — the most likely target. Use the result as `BASE_BRANCH`.
+This walks the commit history of the PR branch and returns the first `origin/<name>` decoration encountered — the branch the PR was most likely based on. If the result is empty, fall through to the next strategy. Use a non-empty result as `BASE_BRANCH`.
 
 **c) Remote default branch:**
 ```bash
