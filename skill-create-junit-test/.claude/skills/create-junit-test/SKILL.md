@@ -39,8 +39,10 @@ Assume JUnit 5 + AssertJ + Mockito. If detection suggests JUnit 4, offer fallbac
 Extract:
 - **Public method signatures** — what each method takes and returns
 - **Dependencies** — constructor params / fields. Mock if: external service, I/O, network, database. Real if: data class, value object, immutable DTO.
-- **All execution paths** — branches (`if`/`switch`), exception throws, null handling, boundary conditions (empty, zero, max, min)
+- **Distinct code paths** — each unique branch (`if`/`switch`), exception throw, null check, and happy path. Count branches, not input variants.
 - **Assertion targets** — what should the test verify? Return value? Object state? Exception type & message? Side effects (void methods)?
+
+Then map paths to test groups before writing any code: inputs that exercise the **same branch** belong in one `@ParameterizedTest`; inputs that exercise **different branches** get separate test methods. A method with one guard clause produces exactly two test groups.
 
 ### 4. Generate Test Class
 
@@ -149,7 +151,8 @@ class OrderServiceTest {
 **Branch coverage:**
 - One assertion focus per test method (one test verifies one expected outcome)
 - Test behaviour, not implementation — test what the method does (happy path, edge cases, errors), not how it does it
-- All execution paths: happy path → edge cases (empty input, null, boundaries, zero, negative) → error paths (exception throws, validation failures) → all conditional branches (`if`, `switch`, `&&`, `||`)
+- Cover each distinct code path **exactly once**. A method with one guard clause needs exactly two test groups (pass / fail), not one test per failing input value. Edge cases (null, zero, negative, empty) that all trigger the same branch belong in `@CsvSource` rows of a single `@ParameterizedTest`, not in separate test methods.
+- **Do not multiply tests across input values.** The signal for consolidation: two method names that differ only by the input description (e.g. `whenNull_thenThrows` vs. `whenEmpty_thenThrows`) — that's one `@ParameterizedTest`, not two methods.
 - Never use `if` or loops in test code — use `@ParameterizedTest` instead to test multiple inputs
 
 **Test data:**

@@ -37,8 +37,10 @@ Assume JUnit 5 + AssertJ + Mockito; fallback to JUnit 4 asserts if needed.
 
 - Public method signatures and returns
 - Dependencies: mock if external service/I/O/database/network; real if data class / DTO / value object
-- All paths: happy path, edges (empty, null, boundary, zero), errors, all branches (`if`, `switch`), exception throws
+- Distinct code paths: each unique branch (`if`/`switch`), exception throw, null check, and happy path — count branches, not input variants
 - Assertion targets: return value? state change? exception? void side effects?
+
+Then map paths to test groups before writing code: inputs that hit the **same branch** → one `@ParameterizedTest`; inputs that hit **different branches** → separate test methods. One guard clause = exactly two test groups.
 
 ### 4. Generate Test Class
 
@@ -116,7 +118,7 @@ class OrderServiceTest {
 - **Assertions:** `assertThat(result).isEqualTo(x)`, `assertThat(subject).returns(x, Subject::getField).returns(y, Subject::getOtherField)` — chain for multiple properties of same object; prefer `.returns()` / `.extracting()` / other methods before `.satisfies()`, `assertThatThrownBy(…).isInstanceOf(…).hasMessage(…)`, chain conditions, `SoftAssertions.assertSoftly()` for independent assertions on different objects so all failures are reported at once
 - **Parameterized:** `@ParameterizedTest` + `@CsvSource` / `@MethodSource` / `@ValueSource`; no `final` on params; replaces loops/conditionals
 - **AAA:** Arrange / Act / Assert with blank-line separators
-- **Coverage:** test behaviour not implementation; all paths (happy, edges, errors, all branches); no `if`/loops in test code
+- **Coverage:** test behaviour not implementation; cover each distinct code path **exactly once** — edge cases (null, zero, empty, negative) that all hit the same branch belong in one `@ParameterizedTest`, not separate methods. Signal for consolidation: two method names that differ only by input description → merge into `@ParameterizedTest`. No `if`/loops in test code.
 - **Test data:** inline for primitives/strings; object mother (`TestFixtures.anOrder().build()`) for complex objects; create builder if missing
 - **Field declaration:** no access modifier, no `final` on test fields (instance and static) (exception to java style); no `final` on parameterized parameters
 
