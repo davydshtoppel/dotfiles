@@ -9,6 +9,8 @@ allowed-tools: [Bash, Read, Glob, Grep]
 
 Analyze and explain code changes between two branches using only git. Works with any git repository.
 
+**Rule:** every git command MUST use the `--no-pager` flag (`git --no-pager <command>`) to prevent interactive pager prompts.
+
 ## Arguments
 
 The user invoked this with: `$ARGUMENTS`
@@ -35,12 +37,26 @@ If this fails, inform the user that the branch does not exist locally. Suggest t
 ## Step 3 — Find the Merge Base
 
 ```bash
-git --no-pager merge-base "$BASE_BRANCH" "$FEATURE_BRANCH"
+MERGE_BASE=$(git --no-pager merge-base "$BASE_BRANCH" "$FEATURE_BRANCH")
+echo "$MERGE_BASE"
 ```
 
-Store the result as `MERGE_BASE`. Use `$MERGE_BASE..$FEATURE_BRANCH` for all subsequent diff and log commands.
+**Merged branch detection:** if the feature branch was already merged into the base via a merge commit, `FEATURE_BRANCH` is an ancestor of `BASE_BRANCH`, which makes the diff empty. Detect and compensate:
 
-If `git --no-pager log --oneline "$MERGE_BASE".."$FEATURE_BRANCH"` produces no output, inform the user that the feature branch has no commits ahead of the base and stop.
+```bash
+if git merge-base --is-ancestor "$FEATURE_BRANCH" "$BASE_BRANCH" 2>/dev/null; then
+  # Find the earliest merge commit that brought FEATURE_BRANCH into BASE_BRANCH
+  MERGE_COMMIT=$(git --no-pager log --merges --ancestry-path --format="%H" "${FEATURE_BRANCH}..${BASE_BRANCH}" | tail -1)
+  if [ -n "$MERGE_COMMIT" ]; then
+    # Use the commit just before the merge as the effective base
+    MERGE_BASE="${MERGE_COMMIT}^1"
+  fi
+fi
+```
+
+Use `$MERGE_BASE..$FEATURE_BRANCH` for all subsequent diff and log commands.
+
+If `git --no-pager log --oneline "$MERGE_BASE".."$FEATURE_BRANCH"` produces no output, inform the user. If a squash or rebase merge was used, the original commits no longer exist as ancestors and cannot be reconstructed from git history alone. Stop.
 
 ## Step 4 — Gather Context
 
@@ -136,6 +152,8 @@ One of:
 
 - **Branch not found locally**: inform user and stop; suggest `git fetch`
 - **No commits ahead of base**: inform user and stop
+- **Already-merged branch (merge commit)**: detected via ancestry check; `MERGE_COMMIT^1` used as effective base so the diff reflects the original changes
+- **Already-merged branch (squash/rebase)**: `FEATURE_BRANCH` is NOT an ancestor of `BASE_BRANCH`; diff works normally against the resolved merge base
 - **Deleted files**: note in analysis; no Read needed
 - **Binary files** (images, lock files, compiled assets): note by name; skip content analysis
 - **Renamed files**: treat as a move; focus analysis on content changes within the rename

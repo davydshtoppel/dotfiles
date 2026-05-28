@@ -10,6 +10,8 @@ Resolve a PR/MR number to git branches using only git, then invoke the `explain-
 
 **Important:** this skill only fetches temporary refs and reads git metadata. It never touches the working tree, the index, or the current branch — the user's local state is never affected.
 
+**Rule:** every git command MUST use the `--no-pager` flag (`git --no-pager <command>`) to prevent interactive pager prompts.
+
 ## Arguments
 
 - First argument: `PR_NUMBER` (required, integer)
@@ -21,17 +23,17 @@ If `PR_NUMBER` is missing or not an integer, stop: `Usage: /explain-pull-request
 
 ### 1. Fetch the PR Branch
 
-Try in order, stopping at first success:
+Try in order, stopping at first success. Always set `GIT_TERMINAL_PROMPT=0` to prevent interactive credential prompts:
 
 ```bash
 # GitHub / Gitea / Forgejo
-git fetch origin "refs/pull/${PR_NUMBER}/head:pr/${PR_NUMBER}-explain"
+GIT_TERMINAL_PROMPT=0 git fetch origin "refs/pull/${PR_NUMBER}/head:pr/${PR_NUMBER}-explain" 2>&1
 
 # Bitbucket Server / Data Center
-git fetch origin "refs/pull-requests/${PR_NUMBER}/from:pr/${PR_NUMBER}-explain"
+GIT_TERMINAL_PROMPT=0 git fetch origin "refs/pull-requests/${PR_NUMBER}/from:pr/${PR_NUMBER}-explain" 2>&1
 
 # GitLab
-git fetch origin "refs/merge-requests/${PR_NUMBER}/head:mr/${PR_NUMBER}-explain"
+GIT_TERMINAL_PROMPT=0 git fetch origin "refs/merge-requests/${PR_NUMBER}/head:mr/${PR_NUMBER}-explain" 2>&1
 ```
 
 Record the local branch name as `PR_BRANCH`. If all three fail, report the error and ask the user to provide branch names and run `/explain-diff` directly.
@@ -44,13 +46,13 @@ Try each strategy in order, stopping at the first success:
 
 **a) Bitbucket Server target ref:**
 ```bash
-git fetch origin "refs/pull-requests/${PR_NUMBER}/to:pr/${PR_NUMBER}-base"
+GIT_TERMINAL_PROMPT=0 git fetch origin "refs/pull-requests/${PR_NUMBER}/to:pr/${PR_NUMBER}-base" 2>&1
 ```
 If this succeeds, use `pr/${PR_NUMBER}-base`.
 
 **b) Find closest remote branch by ancestry:**
 ```bash
-git --no-pager fetch origin
+GIT_TERMINAL_PROMPT=0 git --no-pager fetch origin 2>&1
 git --no-pager for-each-ref --format='%(refname:short)' refs/remotes/origin \
   | grep -v 'HEAD' \
   | while read ref; do
@@ -65,15 +67,15 @@ Use the result (the remote branch with fewest commits ahead of the PR's divergen
 
 **c) Remote default branch:**
 ```bash
-git --no-pager remote show origin 2>/dev/null | grep 'HEAD branch' | awk '{print $NF}'
+git --no-pager remote show -n origin 2>/dev/null | grep 'HEAD branch' | awk '{print $NF}'
 ```
-Prefix with `origin/` and use as `BASE_BRANCH`.
+Use `-n` (no network access) to avoid credential prompts. Prefix with `origin/` and use as `BASE_BRANCH`.
 
 **d) Last resort:** `origin/main`, or `origin/master` if `origin/main` does not exist.
 
 ### 3. Invoke explain-diff
 
-Invoke the `explain-diff` skill with the resolved branches:
+**Immediately invoke the `explain-diff` skill with the resolved branches. Do not stop here.**
 
 ```
 /explain-diff <PR_BRANCH> <BASE_BRANCH>

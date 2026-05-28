@@ -8,6 +8,8 @@ tools: ['codebase', 'terminal']
 
 Analyze and explain code changes between two branches using only git. Works with any git repository.
 
+**Rule:** every git command MUST use the `--no-pager` flag (`git --no-pager <command>`) to prevent interactive pager prompts.
+
 ## Arguments
 
 - First argument: `FEATURE_BRANCH` (required)
@@ -31,9 +33,21 @@ Resolve `BASE_BRANCH`: use the second argument if provided, otherwise `git --no-
 
 ```bash
 MERGE_BASE=$(git --no-pager merge-base "$BASE_BRANCH" "$FEATURE_BRANCH")
+echo "$MERGE_BASE"
 ```
 
-Use `$MERGE_BASE..$FEATURE_BRANCH` for all diffs. If `git --no-pager log --oneline` produces no output, stop and inform the user.
+**Already-merged branch detection:** if the feature branch was already merged into the base via a merge commit, `FEATURE_BRANCH` is an ancestor of `BASE_BRANCH`, which makes the diff empty. Detect and compensate:
+
+```bash
+if git merge-base --is-ancestor "$FEATURE_BRANCH" "$BASE_BRANCH" 2>/dev/null; then
+  MERGE_COMMIT=$(git --no-pager log --merges --ancestry-path --format="%H" "${FEATURE_BRANCH}..${BASE_BRANCH}" | tail -1)
+  if [ -n "$MERGE_COMMIT" ]; then
+    MERGE_BASE="${MERGE_COMMIT}^1"
+  fi
+fi
+```
+
+Use `$MERGE_BASE..$FEATURE_BRANCH` for all diffs. If `git --no-pager log --oneline` produces no output after this adjustment, stop and inform the user. If a squash or rebase merge was used, the original commits are not ancestors and cannot be reconstructed.
 
 ### 3. Gather Context
 
@@ -77,6 +91,8 @@ Use `codebase` to read non-deleted, non-binary changed files. Limit reads to fil
 
 - Branch not found: stop and suggest `git fetch`
 - No commits ahead of base: stop and inform user
+- Already-merged (merge commit): detected via ancestry check; `MERGE_COMMIT^1` used as effective base
+- Already-merged (squash/rebase): `FEATURE_BRANCH` is NOT an ancestor; diff works normally against merge base
 - Deleted or binary files: note by name, skip content analysis
 - Renamed files: focus on content changes within the rename
 - Large diffs (500+ files): summarize at directory level; omit diagrams

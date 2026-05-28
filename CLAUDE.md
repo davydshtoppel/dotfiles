@@ -73,17 +73,21 @@ Applies to: `**/pom.xml`, `**/*.java`, `**/*.kt`, `**/*.kts`, `**/*.scala`, `**/
 
 ### skill-explain-diff Configuration
 Contains a user-invoked skill for analyzing code changes between two branches:
-- **`.claude/skills/explain-diff/SKILL.md`** - Claude Code `/explain-diff` slash command. Takes a feature branch (required) and optional base branch (defaults to current branch). Uses pure git to compute the diff, then produces an overview, a Mermaid diagram of affected components, and a categorized analysis (design, performance, complexity, concurrency, clean code) with a final result verdict.
+- **`.claude/skills/explain-diff/SKILL.md`** - Claude Code `/explain-diff` slash command. Takes a feature branch (required) and optional base branch (defaults to current branch). Uses pure git to compute the diff, then produces an overview, a Mermaid diagram of affected components, and a categorized analysis (design, performance, complexity, concurrency, clean code) with a final result verdict. Handles already-merged branches by detecting ancestry and using the merge commit's first parent as the effective base.
 - **`.copilot/skills/explain-diff/SKILL.md`** - GitHub Copilot agent-mode prompt with equivalent workflow.
+
+All git commands use `git --no-pager` to prevent interactive pager prompts.
 
 **Installation note:** When stowing skill-explain-diff, no `--no-folding` is needed — the `explain-diff/` subdirectory prevents stow from folding: `stow -t ~ skill-explain-diff`.
 
 ### skill-explain-pull-request Configuration
 Contains a user-invoked skill for analyzing a pull request or merge request by number:
-- **`.claude/skills/explain-pull-request/SKILL.md`** - Claude Code `/explain-pull-request` slash command. Accepts a PR/MR number and optional base branch. Fetches the PR source branch via remote refs (tries GitHub/Gitea, then Bitbucket Server, then GitLab), resolves the target branch, and produces the same structured analysis as `explain-diff` — no `gh` CLI required.
+- **`.claude/skills/explain-pull-request/SKILL.md`** - Claude Code `/explain-pull-request` slash command. Accepts a PR/MR number and optional base branch. Fetches the PR source branch via remote refs (tries GitHub/Gitea, then Bitbucket Server, then GitLab), resolves the target branch, then delegates to the `explain-diff` skill via the Skill tool — no `gh` CLI required.
 - **`.copilot/skills/explain-pull-request/SKILL.md`** - GitHub Copilot agent-mode prompt with equivalent workflow.
 
 Both files try three ref conventions in order: `refs/pull/${N}/head` (GitHub/Gitea/Forgejo), `refs/pull-requests/${N}/from` (Bitbucket Server/Data Center), `refs/merge-requests/${N}/head` (GitLab).
+
+Merged PR handling: ancestry check detects merge-commit merges; `MERGE_COMMIT^1` is used as the effective base. Squash/rebase merges are unaffected (original commits are not ancestors). All fetch commands use `GIT_TERMINAL_PROMPT=0`; `git remote show` uses `-n` (no network access).
 
 **Installation note:** When stowing skill-explain-pull-request, no `--no-folding` is needed — the `explain-pull-request/` subdirectory prevents stow from folding: `stow -t ~ skill-explain-pull-request`.
 
