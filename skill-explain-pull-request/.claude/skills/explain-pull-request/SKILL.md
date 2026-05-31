@@ -56,14 +56,14 @@ If this succeeds, use `pr/${PR_NUMBER}-base` as `BASE_BRANCH`.
 
 **b) Scan commit ancestry for the first remote tracking ref:**
 ```bash
-git --no-pager log --format='%D' "${PR_BRANCH}" \
+git --no-pager log --format='%D' "${PR_BRANCH}^" 2>/dev/null \
   | tr ',' '\n' \
   | sed 's/^ *//' \
   | grep -E '^origin/.' \
   | grep -v '/HEAD$' \
   | head -1
 ```
-This walks the commit history of the PR branch and returns the first `origin/<name>` decoration encountered — the branch the PR was most likely based on. If the result is empty, fall through to the next strategy. Use a non-empty result as `BASE_BRANCH`.
+This walks the *ancestor* commits of the PR branch (starting from the parent of the tip, so the tip's own `origin/<source-branch>` decoration is not considered) and returns the first `origin/<name>` decoration encountered — the branch the PR was most likely based on. The `2>/dev/null` handles the rare case of an orphan tip with no parent. If the result is empty, fall through to the next strategy. Use a non-empty result as `BASE_BRANCH`.
 
 **c) Remote default branch:**
 ```bash
