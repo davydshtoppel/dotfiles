@@ -132,10 +132,12 @@ class OrderServiceTest {
 - **Do NOT use `@InjectMocks`** — prefer explicit constructor injection in `@BeforeEach setUp()`. `@InjectMocks` silently bypasses constructor signature changes and hides missing dependencies.
 
 **Assertions (AssertJ — import explicitly, no wildcards per java.md):**
+- **Never call `assertThat` on the same object twice** — chain all verifications in one expression: `assertThat(result).isNotNull().isGreaterThan(0).hasSize(3)`
 - `assertThat(result).isEqualTo(expected)` — single value
 - `assertThat(subject).returns(expectedValue, Subject::getField).returns(anotherValue, Subject::getOtherField)` — multiple properties of the same object; chain `.returns()` / `.extracting()` / other purpose-built methods; use `.satisfies()` only as last resort
+- `assertThat(result).extracting(Result::getField).isEqualTo(expected)` — extract a field and chain further assertions; never use a separate `assertThat(result.getField())`
+- `assertThat(result).asInstanceOf(type(Foo.class)).returns(expected, Foo::field)` — type-narrow and chain verifications on the cast object; `type()` from `InstanceOfAssertFactories`; never use `isInstanceOf(Foo.class)` followed by a separate `assertThat((Foo) result)`
 - `assertThatThrownBy(() -> call()).isInstanceOf(X.class).hasMessage("…")` — exception type and message
-- Chain multiple conditions: `assertThat(result).isNotNull().isGreaterThan(0).hasSize(3)`
 - `SoftAssertions.assertSoftly(s -> { s.assertThat(a).isEqualTo(x); s.assertThat(b).isEqualTo(y); })` — multiple independent assertions on different objects, all collected before failure
 
 **Parameterized tests:**
