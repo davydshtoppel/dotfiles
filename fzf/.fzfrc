@@ -1,0 +1,9 @@
+# To install: git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+#             ~/.fzf/install
+# Add to .zshrc: [ -f ~/.fzfrc ] && source ~/.fzfrc
+
+export FZF_DEFAULT_OPTS="--style full --preview 'fzf-preview.sh {} | head -200'"
+export FZF_CTRL_R_OPTS="--style full --bind 'ctrl-y:execute-silent(echo -n {2..} | pbcopy)+abort' --color header:italic --header 'Press CTRL-Y to copy command into clipboard'"
+export FZF_CTRL_T_OPTS="--style full --preview 'fzf-preview.sh {} | head -200'"
+export FZF_ALT_C_OPTS="--style full --preview 'tree -C {} | head -200'"
+source <(fzf --zsh)

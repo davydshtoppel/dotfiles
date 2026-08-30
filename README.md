@@ -17,6 +17,7 @@ Personal configuration files for editor and shell environments.
 - **skill-review-pr/.copilot/skills/review-pr/SKILL.md** - GitHub Copilot equivalent for PR review
 - **skill-create-junit-test/.claude/skills/create-junit-test/SKILL.md** - Claude Code `/create-junit-test` skill for JUnit 5 test generation
 - **skill-create-junit-test/.copilot/skills/create-junit-test/SKILL.md** - GitHub Copilot equivalent for JUnit test generation
+- **fzf/.fzfrc** - FZF key bindings, preview options, and shell integration
 
 ## Installation
 
@@ -39,7 +40,7 @@ Since this repository is typically cloned to a location other than the home dire
 
 ```bash
 cd /path/to/dotfiles
-stow -t ~ vim ideavim starship
+stow -t ~ vim ideavim starship fzf
 stow --no-folding -t ~ rule-gof rule-java rule-maven
 stow -t ~ skill-review-pr skill-create-junit-test
 ```
@@ -58,6 +59,7 @@ This creates symbolic links for:
 - `skill-review-pr/.claude/skills/review-pr/SKILL.md` → `~/.claude/skills/review-pr/SKILL.md`
 - `skill-create-junit-test/.copilot/skills/create-junit-test/SKILL.md` → `~/.copilot/skills/create-junit-test/SKILL.md`
 - `skill-create-junit-test/.claude/skills/create-junit-test/SKILL.md` → `~/.claude/skills/create-junit-test/SKILL.md`
+- `fzf/.fzfrc` → `~/.fzfrc`
 
 ### Apply Individual Packages
 
@@ -72,6 +74,7 @@ stow --no-folding -t ~ rule-java       # Java style conventions rules (Copilot &
 stow --no-folding -t ~ rule-maven      # Maven build conventions rules (Copilot & Claude Code)
 stow -t ~ skill-review-pr              # PR review skill (Copilot & Claude Code)
 stow -t ~ skill-create-junit-test      # JUnit test generation skill (Copilot & Claude Code)
+stow -t ~ fzf                          # FZF configuration
 ```
 
 ### Remove Dotfiles
@@ -79,7 +82,7 @@ stow -t ~ skill-create-junit-test      # JUnit test generation skill (Copilot & 
 To remove all symlinks:
 
 ```bash
-stow -t ~ -D vim ideavim starship rule-gof rule-java rule-maven skill-review-pr skill-create-junit-test
+stow -t ~ -D vim ideavim starship fzf rule-gof rule-java rule-maven skill-review-pr skill-create-junit-test
 ```
 
 Or remove individual packages:
@@ -93,3 +96,4 @@ stow -t ~ -D vim          # Remove Vim configuration
 - **Vim leader key:** Space
 - **IdeaVim:** Sources `.vimrc`, so shares Vim settings with IDE-specific action mappings
 - **Starship:** Uses Gruvbox Dark color palette
+- **FZF:** Add `[ -f ~/.fzfrc ] && source ~/.fzfrc` to `.zshrc` to activate; the guard makes it safe on machines without fzf

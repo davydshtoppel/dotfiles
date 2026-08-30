@@ -20,6 +20,7 @@ This is a personal dotfiles repository containing editor and shell configuration
 - **skill-explain-pull-request/.copilot/skills/explain-pull-request/SKILL.md** - GitHub Copilot equivalent for PR analysis
 - **skill-create-junit-test/.claude/skills/create-junit-test/SKILL.md** - Claude Code `/create-junit-test` skill for generating JUnit 5 tests
 - **skill-create-junit-test/.copilot/skills/create-junit-test/SKILL.md** - GitHub Copilot equivalent for JUnit test generation
+- **fzf/.fzfrc** - FZF key bindings, preview options, and shell integration (`source <(fzf --zsh)`)
 
 ## Architecture & Key Relationships
 
@@ -107,6 +108,18 @@ Both files enforce:
 - **Coverage:** One assertion focus per test; test all branches (happy path, edges, errors, conditionals)
 
 **Installation note:** When stowing skill-create-junit-test, no `--no-folding` is needed — the parent directory `create-junit-test/` prevents stow from folding: `stow -t ~ skill-create-junit-test`.
+
+### fzf Configuration
+Contains FZF shell integration and key binding options:
+- **`fzf/.fzfrc`** - Sets `FZF_DEFAULT_OPTS`, `FZF_CTRL_R_OPTS`, `FZF_CTRL_T_OPTS`, `FZF_ALT_C_OPTS`, and runs `source <(fzf --zsh)` to activate key bindings.
+
+After stowing, add to `.zshrc`:
+```zsh
+[ -f ~/.fzfrc ] && source ~/.fzfrc
+```
+The guard makes the line safe on machines where fzf is not installed.
+
+**Installation note:** `stow -t ~ fzf` — no `--no-folding` needed.
 
 ## Important Configuration Details
 

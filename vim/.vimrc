@@ -10,6 +10,7 @@ syntax on
 filetype plugin indent on
 
 au BufRead,BufNewFile .sdkmanrc setfiletype jproperties
+au BufRead,BufNewFile .fzfrc setfiletype sh
 
 set relativenumber
 set ruler
@@ -24,14 +25,22 @@ Plug 'machakann/vim-highlightedyank'
 Plug 'tpope/vim-commentary'
 Plug 'preservim/nerdtree'
 Plug 'mechatroner/rainbow_csv'
+Plug 'junegunn/fzf'
+Plug 'junegunn/fzf.vim'
 
 call plug#end()
 
 let g:NERDTreeHijackNetrw=0
+let g:NERDTreeShowHidden=1
 
 nnoremap <leader>h :nohlsearch<CR>
+" NERDTree
 nnoremap <leader>n :NERDTreeFocus<CR>
 nnoremap <C-n> :NERDTree<CR>
 nnoremap <C-t> :NERDTreeToggle<CR>
 nnoremap <C-f> :NERDTreeFind<CR>
+" FZF
+nnoremap <leader>g :Rg<CR>
+nnoremap <C-p> :Files<CR>
+nnoremap <C-b> :Buffers<CR>
 
