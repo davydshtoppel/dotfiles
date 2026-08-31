@@ -1,0 +1,30 @@
+# To install: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+# Custom plugins:
+#   git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+#   git clone https://github.com/zsh-users/zsh-syntax-highlighting ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+# Add to .zshrc: [ -f ~/.omzrc ] && source ~/.omzrc
+
+[[ -z "$ZSH" ]] && [[ -d "$HOME/.oh-my-zsh" ]] && export ZSH="$HOME/.oh-my-zsh"
+
+if [[ -n "$ZSH" ]]; then
+  ZSH_THEME=""
+  plugins=(
+    git
+    ssh
+    sdk
+    sudo
+    brew
+    scala
+    gradle
+    spring
+    docker
+    docker-compose
+    colored-man-pages
+    extract
+    copypath
+    dirhistory
+    zsh-autosuggestions
+    zsh-syntax-highlighting
+  )
+  source $ZSH/oh-my-zsh.sh
+fi

@@ -118,6 +118,17 @@ Both files enforce:
 
 **Installation note:** When stowing skill-create-junit-test, no `--no-folding` is needed — the parent directory `create-junit-test/` prevents stow from folding: `stow -t ~ skill-create-junit-test`.
 
+### omz Configuration
+Contains portable Oh My Zsh plugin list:
+- **`omz/.omzrc`** - Sets `ZSH`, `ZSH_THEME`, and the `plugins` array, then sources `oh-my-zsh.sh`. Manages all built-in and custom plugins in one place.
+
+After stowing, add to `.zshrc`:
+```zsh
+[ -f ~/.omzrc ] && source ~/.omzrc
+```
+
+**Installation note:** `stow -t ~ omz` — no `--no-folding` needed.
+
 ### fzf Configuration
 Contains FZF shell integration and key binding options:
 - **`fzf/.fzfrc`** - Sets `FZF_DEFAULT_OPTS`, `FZF_CTRL_R_OPTS`, `FZF_CTRL_T_OPTS`, `FZF_ALT_C_OPTS`, and runs `source <(fzf --zsh)` to activate key bindings.
