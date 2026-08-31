@@ -14,6 +14,8 @@ This is a personal dotfiles repository containing editor and shell configuration
 - **rule-java/.claude/rules/java.md** - Claude Code rule for Java style conventions
 - **rule-maven/.copilot/instructions/maven.instructions.md** - GitHub Copilot instruction for Maven build conventions
 - **rule-maven/.claude/rules/maven.md** - Claude Code rule for Maven build conventions
+- **rule-no-terminal-history/.copilot/instructions/no-terminal-history.instructions.md** - GitHub Copilot instruction to prefix terminal commands with a space
+- **rule-no-terminal-history/.claude/rules/no-terminal-history.md** - Claude Code rule to prefix terminal commands with a space (suppresses zsh history)
 - **skill-explain-diff/.claude/skills/explain-diff/SKILL.md** - Claude Code `/explain-diff` skill for analyzing changes between branches
 - **skill-explain-diff/.copilot/skills/explain-diff/SKILL.md** - GitHub Copilot equivalent for branch diff analysis
 - **skill-explain-pull-request/.claude/skills/explain-pull-request/SKILL.md** - Claude Code `/explain-pull-request` skill for analyzing a PR/MR by number
@@ -71,6 +73,13 @@ Both files cover module targeting (using `-f` instead of `-pl`), parallel execut
 Applies to: `**/pom.xml`, `**/*.java`, `**/*.kt`, `**/*.kts`, `**/*.scala`, `**/*.groovy` — all common JVM language files where Maven builds are used.
 
 **Installation note:** When stowing rule-maven, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-maven`. This allows other rules to coexist in `~/.claude/rules/` and `~/.copilot/instructions/`.
+
+### rule-no-terminal-history Configuration
+Instructs coding agents to prefix all terminal commands with a leading space, which zsh silently drops from history when `HIST_IGNORE_SPACE` is set.
+- **`.copilot/instructions/no-terminal-history.instructions.md`** - GitHub Copilot instruction, applied globally (`applyTo: '**'`).
+- **`.claude/rules/no-terminal-history.md`** - Claude Code rule, loaded globally (no `paths:` filter).
+
+**Installation note:** When stowing rule-no-terminal-history, use `--no-folding`: `stow --no-folding -t ~ rule-no-terminal-history`.
 
 ### skill-explain-diff Configuration
 Contains a user-invoked skill for analyzing code changes between two branches:
