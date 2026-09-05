@@ -1,0 +1,102 @@
+#!/usr/bin/env zsh
+# ltree - minimal colorized directory-tree printer, drop-in enough for
+# `ltree -C <path> | head -200` (fzf Alt-C preview). Not a full tree
+# reimplementation: no -I/-P filters, no -h/-s sizes, no --gitignore,
+# no multi-path support, and symlinked directories are shown but never
+# followed.
+#
+# Supported flags: -C -a -d -L <n> --dirsfirst
+
+emulate -L zsh
+setopt extendedglob
+
+TRAPPIPE() { exit 0 }   # exit quietly when piped into `head`, etc.
+
+typeset -i color=0 all=0 dirs_only=0 max_level=0 dirsfirst=0
+typeset target="."
+
+while (( $# )); do
+  case "$1" in
+    -C) color=1 ;;
+    -a) all=1 ;;
+    -d) dirs_only=1 ;;
+    -L) shift; max_level=${1:-0} ;;
+    --dirsfirst) dirsfirst=1 ;;
+    -*) ;;                # ignore unknown flags (forward-compat, not an error)
+    *) target=$1 ;;
+  esac
+  shift
+done
+
+if [[ ! -e $target ]]; then
+  print -u2 "ltree: ${target}: No such file or directory"
+  exit 1
+fi
+
+typeset -i dir_count=0 file_count=0
+typeset c_dir="" c_exec="" c_link="" c_broken="" c_reset=""
+if (( color )); then
+  c_dir=$'\e[1;34m'; c_exec=$'\e[1;32m'
+  c_link=$'\e[1;36m'; c_broken=$'\e[1;31m'; c_reset=$'\e[0m'
+fi
+
+_render() {
+  local entry=$1 name=$2
+  if [[ -L $entry ]]; then
+    local dest=$(readlink "$entry")
+    if [[ -e $entry ]]; then
+      print -r -- "${c_link}${name}${c_reset} -> ${dest}"
+    else
+      print -r -- "${c_broken}${name}${c_reset} -> ${dest}"
+    fi
+  elif [[ -d $entry ]]; then
+    print -r -- "${c_dir}${name}${c_reset}"
+  elif [[ -x $entry ]]; then
+    print -r -- "${c_exec}${name}${c_reset}"
+  else
+    print -r -- "$name"
+  fi
+}
+
+_walk() {
+  local dir=$1 prefix=$2
+  local -i level=$3
+  local -a entries d f
+  local qual="" e name connector branch
+  (( all )) && qual="D"
+  (( dirs_only )) && qual+="/"
+  entries=( ${dir}/*(${qual}N) )
+
+  if (( dirsfirst )); then
+    for e in $entries; do
+      [[ -d $e ]] && d+=("$e") || f+=("$e")
+    done
+    entries=( $d $f )
+  fi
+
+  local -i n=${#entries} i=0
+  for e in $entries; do
+    (( i++ ))
+    name=${e:t}
+    if (( i == n )); then connector="└── "; branch="    "
+    else connector="├── "; branch="│   "
+    fi
+    print -rn -- "${prefix}${connector}"
+    _render "$e" "$name"
+    if [[ -d $e && ! -L $e ]]; then
+      (( dir_count++ ))
+      (( max_level == 0 || level < max_level )) && _walk "$e" "${prefix}${branch}" $((level + 1))
+    else
+      (( file_count++ ))
+    fi
+  done
+}
+
+_render "$target" "$target"
+[[ -d $target ]] && _walk "$target" "" 1
+
+typeset dplural="y" fplural="s"
+(( dir_count != 1 )) && dplural="ies"
+(( file_count == 1 )) && fplural=""
+print
+print -r -- "${dir_count} director${dplural}, ${file_count} file${fplural}"

@@ -23,6 +23,7 @@ This is a personal dotfiles repository containing editor and shell configuration
 - **skill-create-junit-test/.claude/skills/create-junit-test/SKILL.md** - Claude Code `/create-junit-test` skill for generating JUnit 5 tests
 - **skill-create-junit-test/.copilot/skills/create-junit-test/SKILL.md** - GitHub Copilot equivalent for JUnit test generation
 - **fzf/.fzfrc** - FZF key bindings, preview options, and shell integration (`source <(fzf --zsh)`)
+- **ltree/.local/bin/ltree** - Colorized `tree`-mimicking zsh script for the FZF Alt-C preview, for machines without Homebrew's `tree`
 
 ## Architecture & Key Relationships
 
@@ -131,7 +132,7 @@ After stowing, add to `.zshrc`:
 
 ### fzf Configuration
 Contains FZF shell integration and key binding options:
-- **`fzf/.fzfrc`** - Sets `FZF_DEFAULT_OPTS`, `FZF_CTRL_R_OPTS`, `FZF_CTRL_T_OPTS`, `FZF_ALT_C_OPTS`, and runs `source <(fzf --zsh)` to activate key bindings.
+- **`fzf/.fzfrc`** - Sets `FZF_DEFAULT_OPTS`, `FZF_CTRL_R_OPTS`, `FZF_CTRL_T_OPTS`, `FZF_ALT_C_OPTS`, and runs `source <(fzf --zsh)` to activate key bindings. `FZF_ALT_C_OPTS` invokes `ltree -C {}`; see the `ltree` Configuration section below for the bundled replacement script this repo provides for machines without a real `tree` binary.
 
 After stowing, add to `.zshrc`:
 ```zsh
@@ -140,6 +141,14 @@ After stowing, add to `.zshrc`:
 The guard makes the line safe on machines where fzf is not installed.
 
 **Installation note:** `stow -t ~ fzf` — no `--no-folding` needed.
+
+### ltree Configuration
+Contains a self-contained zsh script that mimics enough of `tree`'s behavior to serve as a drop-in for `fzf`'s Alt-C preview on machines without `tree` installed (and where installing it via Homebrew is not an option):
+- **`ltree/.local/bin/ltree`** - Recursive directory walker using zsh glob qualifiers (no `find` dependency). Prints Unicode box-drawing branches (`├──`, `└──`, `│`) and a final `N directories, M files` summary line, matching `tree`'s default output shape.
+
+Supported flags: `-C` (colorize output — directories bold blue, executables bold green, symlinks cyan, broken symlinks red), `-a` (show dotfiles), `-d` (directories only), `-L <n>` (depth limit), `--dirsfirst` (list directories before files per level). Unrecognized flags are ignored rather than erroring. Traps `SIGPIPE` so it exits cleanly when truncated by `| head -200`. This is intentionally minimal — not a full `tree` reimplementation (no `-I`/`-P` filters, no `-h`/`-s` sizes, no `--gitignore`; symlinked directories are shown but never followed).
+
+**Installation note:** `stow -t ~ ltree` — no `--no-folding` needed. Ensure `~/.local/bin` is on `PATH` (e.g. `export PATH="$HOME/.local/bin:$PATH"` in `.zshrc`) so `ltree` can be found.
 
 ## Important Configuration Details
 

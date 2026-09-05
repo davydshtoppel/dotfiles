@@ -9,6 +9,7 @@ Personal configuration files for editor and shell environments.
 - **starship/.config/starship.toml** - Starship shell prompt configuration
 - **omz/.omzrc** - Oh My Zsh plugin list and shell setup
 - **fzf/.fzfrc** - FZF key bindings, preview options, and shell integration
+- **ltree/.local/bin/ltree** - Colorized `tree`-mimicking script used by the FZF Alt-C preview (no Homebrew `tree` dependency)
 - **rule-gof/.copilot/instructions/gof.instructions.md** - GitHub Copilot instruction for OOP design patterns
 - **rule-gof/.claude/rules/gof.md** - Claude Code rule for OOP design patterns
 - **rule-java/.copilot/instructions/java.instructions.md** - GitHub Copilot instruction for Java style conventions
@@ -45,7 +46,7 @@ Since this repository is typically cloned to a location other than the home dire
 
 ```bash
 cd /path/to/dotfiles
-stow -t ~ vim ideavim starship fzf omz
+stow -t ~ vim ideavim starship fzf omz ltree
 stow --no-folding -t ~ rule-gof rule-java rule-maven rule-no-terminal-history
 stow -t ~ skill-explain-diff skill-explain-pull-request skill-create-junit-test
 ```
@@ -56,6 +57,7 @@ This creates symbolic links for:
 - `starship/.config/starship.toml` → `~/.config/starship.toml`
 - `omz/.omzrc` → `~/.omzrc`
 - `fzf/.fzfrc` → `~/.fzfrc`
+- `ltree/.local/bin/ltree` → `~/.local/bin/ltree`
 - `rule-gof/.copilot/instructions/gof.instructions.md` → `~/.copilot/instructions/gof.instructions.md`
 - `rule-gof/.claude/rules/gof.md` → `~/.claude/rules/gof.md`
 - `rule-java/.copilot/instructions/java.instructions.md` → `~/.copilot/instructions/java.instructions.md`
@@ -81,6 +83,7 @@ stow -t ~ ideavim                      # IdeaVim configuration only
 stow -t ~ starship                     # Starship configuration only
 stow -t ~ omz                          # Oh My Zsh configuration only
 stow -t ~ fzf                          # FZF configuration only
+stow -t ~ ltree                        # tree-mimicking script for FZF Alt-C preview
 stow --no-folding -t ~ rule-gof        # OOP design patterns rules (Copilot & Claude Code)
 stow --no-folding -t ~ rule-java       # Java style conventions rules (Copilot & Claude Code)
 stow --no-folding -t ~ rule-maven      # Maven build conventions rules (Copilot & Claude Code)
@@ -95,7 +98,7 @@ stow -t ~ skill-create-junit-test      # JUnit test generation skill (Copilot & 
 To remove all symlinks:
 
 ```bash
-stow -t ~ -D vim ideavim starship fzf omz
+stow -t ~ -D vim ideavim starship fzf omz ltree
 stow --no-folding -t ~ -D rule-gof rule-java rule-maven rule-no-terminal-history
 stow -t ~ -D skill-explain-diff skill-explain-pull-request skill-create-junit-test
 ```
@@ -114,3 +117,4 @@ stow -t ~ -D vim          # Remove Vim configuration
 - **Starship:** Uses Gruvbox Dark color palette
 - **FZF:** Add `[ -f ~/.fzfrc ] && source ~/.fzfrc` to `.zshrc` to activate; the guard makes it safe on machines without fzf
 - **OMZ:** Add `[ -f ~/.omzrc ] && source ~/.omzrc` to `.zshrc` to activate
+- **ltree:** `ltree/.local/bin/ltree` is a small zsh script mimicking `tree -C` for machines without Homebrew's `tree` (used by `fzf`'s Alt-C preview via `FZF_ALT_C_OPTS`). Ensure `~/.local/bin` is on `PATH` in `.zshrc` (e.g. `export PATH="$HOME/.local/bin:$PATH"`) so it can be found
