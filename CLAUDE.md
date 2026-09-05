@@ -145,7 +145,8 @@ The guard makes the line safe on machines where fzf is not installed.
 
 ### Vim Leader Key
 - Leader key is space (`let mapleader = " "`)
-- No timeout on leader key sequences (`set notimeout`)
+- Timeout on key sequences: 300 ms (`set timeout timeoutlen=300`)
+- `jj` in insert mode → `<Esc>` (`inoremap jj <Esc>`)
 - Applies to both Vim and IdeaVim configurations
 
 ### Vim Settings

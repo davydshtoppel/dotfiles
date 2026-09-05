@@ -1,7 +1,7 @@
 let mapleader = " "
 let maplocalleader = " "
 
-set notimeout
+set timeout timeoutlen=300
 set nocompatible
 set tabstop=2 shiftwidth=2 expandtab noshiftround
 set scrolloff=5
@@ -13,6 +13,8 @@ set ruler
 set showmatch
 set hlsearch incsearch
 set ignorecase smartcase
+
+inoremap jj <Esc>
 
 syntax on
 filetype plugin indent on
