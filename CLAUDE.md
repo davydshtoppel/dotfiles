@@ -154,7 +154,7 @@ Supported flags: `-C` (colorize output — directories bold blue, executables bo
 
 ### Vim Leader Key
 - Leader key is space (`let mapleader = " "`)
-- Timeout on key sequences: 300 ms (`set timeout timeoutlen=300`)
+- Timeout on key sequences: 500 ms (`set timeout timeoutlen=500`)
 - `jj` in insert mode → `<Esc>` (`inoremap jj <Esc>`)
 - Applies to both Vim and IdeaVim configurations
 

@@ -1,7 +1,7 @@
 let mapleader = " "
 let maplocalleader = " "
 
-set timeout timeoutlen=300
+set timeout timeoutlen=500
 set nocompatible
 set tabstop=2 shiftwidth=2 expandtab noshiftround
 set scrolloff=5
