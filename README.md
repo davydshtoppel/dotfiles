@@ -48,7 +48,7 @@ Since this repository is typically cloned to a location other than the home dire
 cd /path/to/dotfiles
 stow -t ~ vim ideavim starship fzf omz ltree
 stow --no-folding -t ~ rule-gof rule-java rule-maven rule-no-terminal-history
-stow -t ~ skill-explain-diff skill-explain-pull-request skill-create-junit-test
+stow --no-folding -t ~ skill-explain-diff skill-explain-pull-request skill-create-junit-test
 ```
 
 This creates symbolic links for:
@@ -88,9 +88,9 @@ stow --no-folding -t ~ rule-gof        # OOP design patterns rules (Copilot & Cl
 stow --no-folding -t ~ rule-java       # Java style conventions rules (Copilot & Claude Code)
 stow --no-folding -t ~ rule-maven      # Maven build conventions rules (Copilot & Claude Code)
 stow --no-folding -t ~ rule-no-terminal-history  # Terminal history suppression rule
-stow -t ~ skill-explain-diff           # Branch diff analysis skill (Copilot & Claude Code)
-stow -t ~ skill-explain-pull-request   # PR analysis skill (Copilot & Claude Code)
-stow -t ~ skill-create-junit-test      # JUnit test generation skill (Copilot & Claude Code)
+stow --no-folding -t ~ skill-explain-diff           # Branch diff analysis skill (Copilot & Claude Code)
+stow --no-folding -t ~ skill-explain-pull-request   # PR analysis skill (Copilot & Claude Code)
+stow --no-folding -t ~ skill-create-junit-test      # JUnit test generation skill (Copilot & Claude Code)
 ```
 
 ### Remove Dotfiles
@@ -112,7 +112,7 @@ stow -t ~ -D vim          # Remove Vim configuration
 ## Configuration Notes
 
 - **Vim leader key:** Space
-- **`jj` in insert mode:** exits to normal mode (maps to `<Esc>`); works with `set timeout timeoutlen=300`
+- **`jj` in insert mode:** exits to normal mode (maps to `<Esc>`); works with `set timeout timeoutlen=500`
 - **IdeaVim:** Sources `.vimrc`, so shares Vim settings with IDE-specific action mappings on top
 - **Starship:** Uses Gruvbox Dark color palette
 - **FZF:** Add `[ -f ~/.fzfrc ] && source ~/.fzfrc` to `.zshrc` to activate; the guard makes it safe on machines without fzf

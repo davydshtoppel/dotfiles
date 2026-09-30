@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents (Claude Code, GitHub Copilot, and others) when working with code in this repository.
 
 ## Overview
 
@@ -8,6 +8,7 @@ This is a personal dotfiles repository containing editor and shell configuration
 - **vim/.vimrc** - Vim editor configuration with plugins and keybindings
 - **ideavim/.ideavimrc** - IdeaVim plugin configuration for JetBrains IDEs
 - **starship/.config/starship.toml** - Starship shell prompt configuration
+- **omz/.omzrc** - Oh My Zsh plugin list and shell setup
 - **rule-gof/.copilot/instructions/gof.instructions.md** - GitHub Copilot instruction for OOP design patterns
 - **rule-gof/.claude/rules/gof.md** - Claude Code rule for Gang of Four patterns and SOLID principles
 - **rule-java/.copilot/instructions/java.instructions.md** - GitHub Copilot instruction for Java style conventions
@@ -34,17 +35,21 @@ The Vim configuration uses vim-plug for plugin management. Plugins are declared 
 - `vim-commentary` - Comment/uncomment operator
 - `nerdtree` - File tree explorer
 - `rainbow_csv` - CSV file syntax highlighting
+- `fzf` + `fzf.vim` - Fuzzy finder (`:Rg`, `:Files`, `:Buffers`)
+- `vim-which-key` - Keybinding hints popup
+- `vim-gitgutter` - Git diff signs and hunk operations
 
 ### IdeaVim Relationship
-The `.ideavimrc` sources `.vimrc` at the top (line 7: `source ~/.vimrc`), so they share Vim settings. IdeaVim then adds IDE-specific action mappings that map Vim keybindings to JetBrains IDE actions.
+The `.ideavimrc` sources `.vimrc` at the top (`source ~/.vimrc`), so they share Vim settings. IdeaVim then adds IDE-specific action mappings that map Vim keybindings to JetBrains IDE actions, and enables the `which-key` and `NERDTree` IdeaVim plugins (which must be installed in the IDE) plus `set ideajoin`.
 
 **Key IDE action mappings:**
 - Navigation: `]d`/`[d` for next/previous error, `gi` for go to implementation, `gr` for find usages
-- Code actions: `<leader>ca` (show intentions), `<leader>cf` (reformat), `<leader>cr` (refactoring menu)
+- Code actions: `<leader>ca` (show intentions), `<leader>cf` (reformat), `<leader>co` (optimize imports), `<leader>cg` (generate), `<leader>cr` (refactoring menu), `<leader>rn` (rename)
+- Windows: `<C-n>` (select in project view), `<C-t>` (activate terminal)
 - Debugging: `<leader>t`/`<leader>T` (run), `<leader>d`/`<leader>D` (debug)
 
 ### Starship Configuration
-Uses a custom Gruvbox Dark color palette with a multi-segment format. Each segment (os, directory, git, languages, time) has specific styling and positioning. The configuration detects multiple programming languages and shows their versions.
+Uses a custom Gruvbox Dark color palette with a multi-segment format. Each segment (os, username, directory, git, languages, docker/conda/pixi context, time) has specific styling and positioning. The configuration detects multiple programming languages and shows their versions.
 
 ### rule-gof Configuration
 Contains design pattern guidance for code generation tools:
@@ -89,7 +94,7 @@ Contains a user-invoked skill for analyzing code changes between two branches:
 
 All git commands use `git --no-pager` to prevent interactive pager prompts.
 
-**Installation note:** When stowing skill-explain-diff, no `--no-folding` is needed — the `explain-diff/` subdirectory prevents stow from folding: `stow -t ~ skill-explain-diff`.
+**Installation note:** When stowing skill-explain-diff, use `--no-folding` so `~/.claude/skills/` stays a real directory (otherwise stow symlinks the whole directory into the repo and Claude Code writes its synced skills there): `stow --no-folding -t ~ skill-explain-diff`.
 
 ### skill-explain-pull-request Configuration
 Contains a user-invoked skill for analyzing a pull request or merge request by number:
@@ -100,7 +105,7 @@ Both files try three ref conventions in order: `refs/pull/${N}/head` (GitHub/Git
 
 Merged PR handling: ancestry check detects merge-commit merges; `MERGE_COMMIT^1` is used as the effective base. Squash/rebase merges are unaffected (original commits are not ancestors). All fetch commands use `GIT_TERMINAL_PROMPT=0`; `git remote show` uses `-n` (no network access).
 
-**Installation note:** When stowing skill-explain-pull-request, no `--no-folding` is needed — the `explain-pull-request/` subdirectory prevents stow from folding: `stow -t ~ skill-explain-pull-request`.
+**Installation note:** When stowing skill-explain-pull-request, use `--no-folding` so `~/.claude/skills/` stays a real directory (otherwise stow symlinks the whole directory into the repo and Claude Code writes its synced skills there): `stow --no-folding -t ~ skill-explain-pull-request`.
 
 ### skill-create-junit-test Configuration
 Contains a user-invoked skill for generating, refactoring, and maintaining Java unit tests following comprehensive conventions. Use when writing new tests, refactoring existing tests, or for test maintenance when the code under test has evolved (constructor changed, API updated, tests broken after refactoring):
@@ -117,11 +122,11 @@ Both files enforce:
 - **Test data:** Object mother pattern for complex domain objects; inline constructors for simple values
 - **Coverage:** One assertion focus per test; test all branches (happy path, edges, errors, conditionals)
 
-**Installation note:** When stowing skill-create-junit-test, no `--no-folding` is needed — the parent directory `create-junit-test/` prevents stow from folding: `stow -t ~ skill-create-junit-test`.
+**Installation note:** When stowing skill-create-junit-test, use `--no-folding` so `~/.claude/skills/` stays a real directory (otherwise stow symlinks the whole directory into the repo and Claude Code writes its synced skills there): `stow --no-folding -t ~ skill-create-junit-test`.
 
 ### omz Configuration
 Contains portable Oh My Zsh plugin list:
-- **`omz/.omzrc`** - Sets `ZSH`, `ZSH_THEME`, and the `plugins` array, then sources `oh-my-zsh.sh`. Manages all built-in and custom plugins in one place.
+- **`omz/.omzrc`** - If `~/.oh-my-zsh` exists (and `ZSH` is not already set), sets `ZSH`, an empty `ZSH_THEME` (the prompt is handled by Starship), and the `plugins` array, then sources `oh-my-zsh.sh`. Does nothing when Oh My Zsh is not installed. Manages all built-in and custom plugins (`zsh-autosuggestions`, `zsh-syntax-highlighting`) in one place; header comments list the clone commands for custom plugins.
 
 After stowing, add to `.zshrc`:
 ```zsh
@@ -132,7 +137,7 @@ After stowing, add to `.zshrc`:
 
 ### fzf Configuration
 Contains FZF shell integration and key binding options:
-- **`fzf/.fzfrc`** - Sets `FZF_DEFAULT_OPTS`, `FZF_CTRL_R_OPTS`, `FZF_CTRL_T_OPTS`, `FZF_ALT_C_OPTS`, and runs `source <(fzf --zsh)` to activate key bindings. `FZF_ALT_C_OPTS` invokes `ltree -C {}`; see the `ltree` Configuration section below for the bundled replacement script this repo provides for machines without a real `tree` binary.
+- **`fzf/.fzfrc`** - Sets `FZF_DEFAULT_OPTS` (`--style full`), `FZF_CTRL_R_OPTS` (Ctrl-Y copies the command via `pbcopy`), `FZF_CTRL_T_OPTS` (preview via `fzf-preview.sh`), `FZF_ALT_C_OPTS`, and runs `source <(fzf --zsh)` to activate key bindings. `FZF_ALT_C_OPTS` invokes `ltree -C {}`; see the `ltree` Configuration section below for the bundled replacement script this repo provides for machines without a real `tree` binary.
 
 After stowing, add to `.zshrc`:
 ```zsh
@@ -162,7 +167,7 @@ Supported flags: `-C` (colorize output — directories bold blue, executables bo
 - Tabs: 2 spaces, expanded tabs, no shift rounding
 - Searching: case-insensitive by default, smart case matching, inline search
 - Navigation: 5 lines scroll offset, relative line numbers, match highlighting
-- `.sdkmanrc` files are treated as Java properties files (line 12)
+- `.sdkmanrc` files are treated as Java properties files; `.fzfrc` files as shell (`sh`)
 
 ### NERDTree Configuration
 - File tree not hijacked by netrw (`NERDTreeHijackNetrw=0`)
@@ -171,6 +176,13 @@ Supported flags: `-C` (colorize output — directories bold blue, executables bo
   - `<C-t>` - Toggle NERDTree
   - `<C-f>` - Find current file in tree
   - `<leader>n` - Focus NERDTree window
+- Hidden files shown (`NERDTreeShowHidden=1`)
+
+### Other Vim Keybindings
+- `<leader>h` - Clear search highlight
+- FZF: `<leader>r` (ripgrep), `<C-p>` (files), `<C-b>` (buffers)
+- GitGutter: `<leader>gp`/`gs`/`gu` (preview/stage/undo hunk), `<leader>gn`/`gP` (next/previous hunk)
+- which-key: `<leader>?` shows keybindings; descriptions live in `g:which_key_map` — update it when adding mappings
 
 ## Working With These Configurations
 
@@ -188,7 +200,13 @@ Supported flags: `-C` (colorize output — directories bold blue, executables bo
 ### Modifying IdeaVim Mappings
 - Reference available actions at https://jb.gg/abva4t
 - Most IDE actions are mapped in comments showing the action name
-- Some mappings are conditional (e.g., commented breakpoint toggle on line 40)
+- Some mappings are commented out (e.g., breakpoint toggle `\b`)
+
+## Repository Conventions
+- Each top-level directory is a stow package; its internal layout mirrors the target path under `~`.
+- Rules and skills exist in paired Claude Code (`.claude/`) and GitHub Copilot (`.copilot/`) variants — keep both in sync when changing either.
+- When adding or changing a package, update `README.md` (contents, stow commands, symlink list) and this file.
+- Do not commit `skill-create-junit-test/.claude/skills/synced/` — it is generated by Claude tooling.
 
 ## External Documentation References
 - Vim documentation: `:help` in Vim
