@@ -9,6 +9,7 @@ This is a personal dotfiles repository containing editor and shell configuration
 - **ideavim/.ideavimrc** - IdeaVim plugin configuration for JetBrains IDEs
 - **starship/.config/starship.toml** - Starship shell prompt configuration
 - **omz/.omzrc** - Oh My Zsh plugin list and shell setup
+- **vscode/Library/Application Support/Code/User/settings.json** - VS Code user settings (macOS), including VSCodeVim config mirroring `.vimrc`
 - **rule-gof/.copilot/instructions/gof.instructions.md** - GitHub Copilot instruction for OOP design patterns
 - **rule-gof/.claude/rules/gof.md** - Claude Code rule for Gang of Four patterns and SOLID principles
 - **rule-java/.copilot/instructions/java.instructions.md** - GitHub Copilot instruction for Java style conventions
@@ -86,6 +87,14 @@ Instructs coding agents to prefix all terminal commands with a leading space, wh
 - **`.claude/rules/no-terminal-history.md`** - Claude Code rule, loaded globally (no `paths:` filter).
 
 **Installation note:** When stowing rule-no-terminal-history, use `--no-folding`: `stow --no-folding -t ~ rule-no-terminal-history`.
+
+### vscode Configuration
+Contains VS Code user configuration for macOS:
+- **`Library/Application Support/Code/User/settings.json`** - Gruvbox theme, editor options, VSCodeVim settings (space leader, `jj` → Esc, `<leader>c*`/`<leader>f*` mappings matching `.ideavimrc`), and language formatter settings.
+
+Not shared on purpose: `mcp.json`, `chatLanguageModels.json`, workspace files, and all machine-local state in the `User/` directory (History, globalStorage, workspaceStorage, sync, profiles).
+
+**Installation note:** `stow --no-folding -t ~ vscode` — `--no-folding` is required so `~/Library/Application Support/Code/User/` stays a real directory. Move any existing real `settings.json` away first, otherwise stow refuses.
 
 ### skill-explain-diff Configuration
 Contains a user-invoked skill for analyzing code changes between two branches:

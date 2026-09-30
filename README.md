@@ -10,6 +10,7 @@ Personal configuration files for editor and shell environments.
 - **omz/.omzrc** - Oh My Zsh plugin list and shell setup
 - **fzf/.fzfrc** - FZF key bindings, preview options, and shell integration
 - **ltree/.local/bin/ltree** - Colorized `tree`-mimicking script used by the FZF Alt-C preview (no Homebrew `tree` dependency)
+- **vscode/Library/Application Support/Code/User/settings.json** - VS Code user settings (macOS), including VSCodeVim config mirroring `.vimrc`
 - **rule-gof/.copilot/instructions/gof.instructions.md** - GitHub Copilot instruction for OOP design patterns
 - **rule-gof/.claude/rules/gof.md** - Claude Code rule for OOP design patterns
 - **rule-java/.copilot/instructions/java.instructions.md** - GitHub Copilot instruction for Java style conventions
@@ -49,6 +50,7 @@ cd /path/to/dotfiles
 stow -t ~ vim ideavim starship fzf omz ltree
 stow --no-folding -t ~ rule-gof rule-java rule-maven rule-no-terminal-history
 stow --no-folding -t ~ skill-explain-diff skill-explain-pull-request skill-create-junit-test
+stow --no-folding -t ~ vscode   # macOS only
 ```
 
 This creates symbolic links for:
@@ -58,6 +60,7 @@ This creates symbolic links for:
 - `omz/.omzrc` → `~/.omzrc`
 - `fzf/.fzfrc` → `~/.fzfrc`
 - `ltree/.local/bin/ltree` → `~/.local/bin/ltree`
+- `vscode/Library/Application Support/Code/User/settings.json` → `~/Library/Application Support/Code/User/settings.json`
 - `rule-gof/.copilot/instructions/gof.instructions.md` → `~/.copilot/instructions/gof.instructions.md`
 - `rule-gof/.claude/rules/gof.md` → `~/.claude/rules/gof.md`
 - `rule-java/.copilot/instructions/java.instructions.md` → `~/.copilot/instructions/java.instructions.md`
@@ -84,6 +87,7 @@ stow -t ~ starship                     # Starship configuration only
 stow -t ~ omz                          # Oh My Zsh configuration only
 stow -t ~ fzf                          # FZF configuration only
 stow -t ~ ltree                        # tree-mimicking script for FZF Alt-C preview
+stow --no-folding -t ~ vscode          # VS Code settings (macOS)
 stow --no-folding -t ~ rule-gof        # OOP design patterns rules (Copilot & Claude Code)
 stow --no-folding -t ~ rule-java       # Java style conventions rules (Copilot & Claude Code)
 stow --no-folding -t ~ rule-maven      # Maven build conventions rules (Copilot & Claude Code)
@@ -101,6 +105,7 @@ To remove all symlinks:
 stow -t ~ -D vim ideavim starship fzf omz ltree
 stow --no-folding -t ~ -D rule-gof rule-java rule-maven rule-no-terminal-history
 stow -t ~ -D skill-explain-diff skill-explain-pull-request skill-create-junit-test
+stow --no-folding -t ~ -D vscode
 ```
 
 Or remove individual packages:
@@ -118,3 +123,4 @@ stow -t ~ -D vim          # Remove Vim configuration
 - **FZF:** Add `[ -f ~/.fzfrc ] && source ~/.fzfrc` to `.zshrc` to activate; the guard makes it safe on machines without fzf
 - **OMZ:** Add `[ -f ~/.omzrc ] && source ~/.omzrc` to `.zshrc` to activate
 - **ltree:** `ltree/.local/bin/ltree` is a small zsh script mimicking `tree -C` for machines without Homebrew's `tree` (used by `fzf`'s Alt-C preview via `FZF_ALT_C_OPTS`). Ensure `~/.local/bin` is on `PATH` in `.zshrc` (e.g. `export PATH="$HOME/.local/bin:$PATH"`) so it can be found
+- **VS Code:** macOS only. Stow with `--no-folding` so `~/Library/Application Support/Code/User/` stays a real directory (it holds machine-local state). If a real `settings.json` already exists there, move it away first (stow will not overwrite it). Avoid enabling Settings Sync for `settings.json` alongside stow
