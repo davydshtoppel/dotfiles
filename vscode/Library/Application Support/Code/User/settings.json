@@ -7,6 +7,9 @@
     // vsicons settings
     "vsicons.dontShowNewVersionMessage": true,
     // editor settings
+    "editor.fontFamily": "'JetBrainsMono Nerd Font', monospace",
+    "editor.fontSize": 13,
+    "editor.fontLigatures": true,
     "editor.lineNumbers": "relative",
     "editor.renderWhitespace": "all",
     "editor.cursorSurroundingLines": 8,
@@ -21,14 +24,18 @@
         "editor.defaultFormatter": "Vue.volar"
     },
     // terminal settings
-    "terminal.integrated.fontFamily": "Hack Nerd Font",
-    "terminal.integrated.fontSize": 12,
+    "terminal.integrated.fontFamily": "'JetBrainsMono Nerd Font'",
+    "terminal.integrated.fontSize": 13,
+    // chat settings
     "chat.viewSessions.orientation": "stacked",
     // intellij settings
     "intellij.region": "europe",
     "intellij.dataSharing": "anonymous",
     // xml settings
     "xml.server.vmargs": "-Xmx128M",
+    // gitlens settings
+    "gitlens.plusFeatures.enabled": false,
+    "gitlens.graph.details.location": "auto",
     // Claude settings
     "claudeCode.preferredLocation": "panel",
     "claudeCode.hideOnboarding": true,
