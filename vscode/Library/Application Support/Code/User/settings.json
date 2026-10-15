@@ -96,7 +96,7 @@
     },
     {
       "before": ["<leader>", "f", "b"],
-      "commands": ["workbench.action.showAllEditors"]
+      "commands": ["workbench.action.showAllEditorsByMostRecentlyUsed"]
     },
     {
       "before": ["<leader>", "f", "f"],
@@ -104,7 +104,7 @@
     },
     {
       "before": ["<leader>", "f", "e"],
-      "commands": ["workbench.action.toggleSidebarVisibility", "workbench.files.action.showActiveFileInExplorer"]
+      "commands": ["workbench.files.action.showActiveFileInExplorer"]
     },
     {
       "before": ["<leader>", "f", "s"],
