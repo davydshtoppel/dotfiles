@@ -17,14 +17,12 @@ Personal configuration files for editor and shell environments.
 - **rule-java/.claude/rules/java.md** - Claude Code rule for Java style conventions
 - **rule-maven/.copilot/instructions/maven.instructions.md** - GitHub Copilot instruction for Maven build conventions
 - **rule-maven/.claude/rules/maven.md** - Claude Code rule for Maven build conventions
-- **rule-no-terminal-history/.copilot/instructions/no-terminal-history.instructions.md** - GitHub Copilot instruction to prefix terminal commands with a space
-- **rule-no-terminal-history/.claude/rules/no-terminal-history.md** - Claude Code rule to suppress zsh history for terminal commands
 - **skill-explain-diff/.claude/skills/explain-diff/SKILL.md** - Claude Code `/explain-diff` skill for analyzing changes between branches
-- **skill-explain-diff/.copilot/skills/explain-diff/SKILL.md** - GitHub Copilot equivalent for branch diff analysis
+- **skill-explain-diff/.agents/skills/explain-diff/SKILL.md** - GitHub Copilot equivalent for branch diff analysis
 - **skill-explain-pull-request/.claude/skills/explain-pull-request/SKILL.md** - Claude Code `/explain-pull-request` skill for analyzing a PR/MR by number
-- **skill-explain-pull-request/.copilot/skills/explain-pull-request/SKILL.md** - GitHub Copilot equivalent for PR analysis
+- **skill-explain-pull-request/.agents/skills/explain-pull-request/SKILL.md** - GitHub Copilot equivalent for PR analysis
 - **skill-create-junit-test/.claude/skills/create-junit-test/SKILL.md** - Claude Code `/create-junit-test` skill for JUnit 5 test generation
-- **skill-create-junit-test/.copilot/skills/create-junit-test/SKILL.md** - GitHub Copilot equivalent for JUnit test generation
+- **skill-create-junit-test/.agents/skills/create-junit-test/SKILL.md** - GitHub Copilot equivalent for JUnit test generation
 - **skill-software-factory/.claude/skills/factory/SKILL.md** + **skill-software-factory/.claude/agents/factory-*.md** - Claude Code `/factory` software factory (explorer → planner → implementer with two approval checkpoints)
 - **skill-software-factory/.copilot/agents/factory*.agent.md** - GitHub Copilot equivalent (`factory` custom agent + subagents) for VS Code and Copilot CLI
 
@@ -50,7 +48,7 @@ Since this repository is typically cloned to a location other than the home dire
 ```bash
 cd /path/to/dotfiles
 stow -t ~ vim ideavim starship fzf omz ltree
-stow --no-folding -t ~ rule-gof rule-java rule-maven rule-no-terminal-history
+stow --no-folding -t ~ rule-gof rule-java rule-maven
 stow --no-folding -t ~ skill-explain-diff skill-explain-pull-request skill-create-junit-test
 stow --no-folding -t ~ skill-software-factory
 stow --no-folding -t ~ vscode   # macOS only
@@ -70,14 +68,12 @@ This creates symbolic links for:
 - `rule-java/.claude/rules/java.md` → `~/.claude/rules/java.md`
 - `rule-maven/.copilot/instructions/maven.instructions.md` → `~/.copilot/instructions/maven.instructions.md`
 - `rule-maven/.claude/rules/maven.md` → `~/.claude/rules/maven.md`
-- `rule-no-terminal-history/.copilot/instructions/no-terminal-history.instructions.md` → `~/.copilot/instructions/no-terminal-history.instructions.md`
-- `rule-no-terminal-history/.claude/rules/no-terminal-history.md` → `~/.claude/rules/no-terminal-history.md`
 - `skill-explain-diff/.claude/skills/explain-diff/SKILL.md` → `~/.claude/skills/explain-diff/SKILL.md`
-- `skill-explain-diff/.copilot/skills/explain-diff/SKILL.md` → `~/.copilot/skills/explain-diff/SKILL.md`
+- `skill-explain-diff/.agents/skills/explain-diff/SKILL.md` → `~/.agents/skills/explain-diff/SKILL.md`
 - `skill-explain-pull-request/.claude/skills/explain-pull-request/SKILL.md` → `~/.claude/skills/explain-pull-request/SKILL.md`
-- `skill-explain-pull-request/.copilot/skills/explain-pull-request/SKILL.md` → `~/.copilot/skills/explain-pull-request/SKILL.md`
+- `skill-explain-pull-request/.agents/skills/explain-pull-request/SKILL.md` → `~/.agents/skills/explain-pull-request/SKILL.md`
 - `skill-create-junit-test/.claude/skills/create-junit-test/SKILL.md` → `~/.claude/skills/create-junit-test/SKILL.md`
-- `skill-create-junit-test/.copilot/skills/create-junit-test/SKILL.md` → `~/.copilot/skills/create-junit-test/SKILL.md`
+- `skill-create-junit-test/.agents/skills/create-junit-test/SKILL.md` → `~/.agents/skills/create-junit-test/SKILL.md`
 - `skill-software-factory/.claude/skills/factory/SKILL.md` → `~/.claude/skills/factory/SKILL.md`
 - `skill-software-factory/.claude/agents/factory-{explorer,planner,implementer}.md` → `~/.claude/agents/`
 - `skill-software-factory/.copilot/agents/factory{,-explorer,-planner,-implementer}.agent.md` → `~/.copilot/agents/`
@@ -97,12 +93,25 @@ stow --no-folding -t ~ vscode          # VS Code settings (macOS)
 stow --no-folding -t ~ rule-gof        # OOP design patterns rules (Copilot & Claude Code)
 stow --no-folding -t ~ rule-java       # Java style conventions rules (Copilot & Claude Code)
 stow --no-folding -t ~ rule-maven      # Maven build conventions rules (Copilot & Claude Code)
-stow --no-folding -t ~ rule-no-terminal-history  # Terminal history suppression rule
 stow --no-folding -t ~ skill-explain-diff           # Branch diff analysis skill (Copilot & Claude Code)
 stow --no-folding -t ~ skill-explain-pull-request   # PR analysis skill (Copilot & Claude Code)
 stow --no-folding -t ~ skill-create-junit-test      # JUnit test generation skill (Copilot & Claude Code)
 stow --no-folding -t ~ skill-software-factory       # Software factory skill + subagents (Copilot & Claude Code)
 ```
+
+### Migrating Copilot skills to ~/.agents/skills
+
+Copilot skills (`skill-explain-diff`, `skill-explain-pull-request`, `skill-create-junit-test`) used to be stowed into `~/.copilot/skills/`; they now go to `~/.agents/skills/`, which Copilot and other harnesses read. On a machine stowed with the old layout, `git pull` leaves dangling links, so `stow -D` can no longer find them. Clean up and restow:
+
+```bash
+find ~/.copilot/skills -type l -lname '*dotfiles/skill-*' -delete   # dangling links into this repo
+find ~/.copilot/skills -mindepth 1 -type d -empty -delete
+rmdir ~/.copilot/skills 2>/dev/null
+# move aside any real ~/.agents/skills/<name> directory that stow reports as a conflict
+stow -R --no-folding -t ~ skill-explain-diff skill-explain-pull-request skill-create-junit-test
+```
+
+Use `--no-folding` so `~/.agents/skills/` stays a real directory shared with `npx skills` installs.
 
 ### Remove Dotfiles
 
@@ -110,8 +119,8 @@ To remove all symlinks:
 
 ```bash
 stow -t ~ -D vim ideavim starship fzf omz ltree
-stow --no-folding -t ~ -D rule-gof rule-java rule-maven rule-no-terminal-history
-stow -t ~ -D skill-explain-diff skill-explain-pull-request skill-create-junit-test
+stow --no-folding -t ~ -D rule-gof rule-java rule-maven
+stow --no-folding -t ~ -D skill-explain-diff skill-explain-pull-request skill-create-junit-test
 stow --no-folding -t ~ -D skill-software-factory
 stow --no-folding -t ~ -D vscode
 ```

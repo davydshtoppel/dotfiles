@@ -16,14 +16,12 @@ This is a personal dotfiles repository containing editor and shell configuration
 - **rule-java/.claude/rules/java.md** - Claude Code rule for Java style conventions
 - **rule-maven/.copilot/instructions/maven.instructions.md** - GitHub Copilot instruction for Maven build conventions
 - **rule-maven/.claude/rules/maven.md** - Claude Code rule for Maven build conventions
-- **rule-no-terminal-history/.copilot/instructions/no-terminal-history.instructions.md** - GitHub Copilot instruction to prefix terminal commands with a space
-- **rule-no-terminal-history/.claude/rules/no-terminal-history.md** - Claude Code rule to prefix terminal commands with a space (suppresses zsh history)
 - **skill-explain-diff/.claude/skills/explain-diff/SKILL.md** - Claude Code `/explain-diff` skill for analyzing changes between branches
-- **skill-explain-diff/.copilot/skills/explain-diff/SKILL.md** - GitHub Copilot equivalent for branch diff analysis
+- **skill-explain-diff/.agents/skills/explain-diff/SKILL.md** - GitHub Copilot equivalent for branch diff analysis
 - **skill-explain-pull-request/.claude/skills/explain-pull-request/SKILL.md** - Claude Code `/explain-pull-request` skill for analyzing a PR/MR by number
-- **skill-explain-pull-request/.copilot/skills/explain-pull-request/SKILL.md** - GitHub Copilot equivalent for PR analysis
+- **skill-explain-pull-request/.agents/skills/explain-pull-request/SKILL.md** - GitHub Copilot equivalent for PR analysis
 - **skill-create-junit-test/.claude/skills/create-junit-test/SKILL.md** - Claude Code `/create-junit-test` skill for generating JUnit 5 tests
-- **skill-create-junit-test/.copilot/skills/create-junit-test/SKILL.md** - GitHub Copilot equivalent for JUnit test generation
+- **skill-create-junit-test/.agents/skills/create-junit-test/SKILL.md** - GitHub Copilot equivalent for JUnit test generation
 - **fzf/.fzfrc** - FZF key bindings, preview options, and shell integration (`source <(fzf --zsh)`)
 - **ltree/.local/bin/ltree** - Colorized `tree`-mimicking zsh script for the FZF Alt-C preview, for machines without Homebrew's `tree`
 - **skill-software-factory/.claude/skills/factory/SKILL.md** + **skill-software-factory/.claude/agents/factory-*.md** - Claude Code `/factory` software factory: orchestrator skill + explorer/planner/implementer subagents
@@ -83,13 +81,6 @@ Applies to: `**/pom.xml`, `**/*.java`, `**/*.kt`, `**/*.kts`, `**/*.scala`, `**/
 
 **Installation note:** When stowing rule-maven, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-maven`. This allows other rules to coexist in `~/.claude/rules/` and `~/.copilot/instructions/`.
 
-### rule-no-terminal-history Configuration
-Instructs coding agents to prefix all terminal commands with a leading space, which zsh silently drops from history when `HIST_IGNORE_SPACE` is set.
-- **`.copilot/instructions/no-terminal-history.instructions.md`** - GitHub Copilot instruction, applied globally (`applyTo: '**'`).
-- **`.claude/rules/no-terminal-history.md`** - Claude Code rule, loaded globally (no `paths:` filter).
-
-**Installation note:** When stowing rule-no-terminal-history, use `--no-folding`: `stow --no-folding -t ~ rule-no-terminal-history`.
-
 ### vscode Configuration
 Contains VS Code user configuration for macOS:
 - **`Library/Application Support/Code/User/settings.json`** - Gruvbox theme, editor options, VSCodeVim settings (space leader, `jj` → Esc, `<leader>c*`/`<leader>f*` mappings matching `.ideavimrc`), and language formatter settings.
@@ -101,27 +92,27 @@ Not shared on purpose: `mcp.json`, `chatLanguageModels.json`, workspace files, a
 ### skill-explain-diff Configuration
 Contains a user-invoked skill for analyzing code changes between two branches:
 - **`.claude/skills/explain-diff/SKILL.md`** - Claude Code `/explain-diff` slash command. Takes a feature branch (required) and optional base branch (defaults to current branch). Uses pure git to compute the diff, then produces an overview, a Mermaid diagram of affected components, and a categorized analysis (design, performance, complexity, concurrency, clean code) with a final result verdict. Handles already-merged branches by detecting ancestry and using the merge commit's first parent as the effective base.
-- **`.copilot/skills/explain-diff/SKILL.md`** - GitHub Copilot agent-mode prompt with equivalent workflow.
+- **`.agents/skills/explain-diff/SKILL.md`** - GitHub Copilot (and other `.agents`-aware harnesses) skill with equivalent workflow.
 
 All git commands use `git --no-pager` to prevent interactive pager prompts.
 
-**Installation note:** When stowing skill-explain-diff, use `--no-folding` so `~/.claude/skills/` stays a real directory (otherwise stow symlinks the whole directory into the repo and Claude Code writes its synced skills there): `stow --no-folding -t ~ skill-explain-diff`.
+**Installation note:** When stowing skill-explain-diff, use `--no-folding` so `~/.claude/skills/` and `~/.agents/skills/` (where `npx skills` installs too) stay real directories (otherwise stow symlinks the whole directory into the repo and Claude Code writes its synced skills there): `stow --no-folding -t ~ skill-explain-diff`.
 
 ### skill-explain-pull-request Configuration
 Contains a user-invoked skill for analyzing a pull request or merge request by number:
 - **`.claude/skills/explain-pull-request/SKILL.md`** - Claude Code `/explain-pull-request` slash command. Accepts a PR/MR number and optional base branch. Fetches the PR source branch via remote refs (tries GitHub/Gitea, then Bitbucket Server, then GitLab), resolves the target branch, then delegates to the `explain-diff` skill via the Skill tool — no `gh` CLI required.
-- **`.copilot/skills/explain-pull-request/SKILL.md`** - GitHub Copilot agent-mode prompt with equivalent workflow.
+- **`.agents/skills/explain-pull-request/SKILL.md`** - GitHub Copilot (and other `.agents`-aware harnesses) skill with equivalent workflow.
 
 Both files try three ref conventions in order: `refs/pull/${N}/head` (GitHub/Gitea/Forgejo), `refs/pull-requests/${N}/from` (Bitbucket Server/Data Center), `refs/merge-requests/${N}/head` (GitLab).
 
 Merged PR handling: ancestry check detects merge-commit merges; `MERGE_COMMIT^1` is used as the effective base. Squash/rebase merges are unaffected (original commits are not ancestors). All fetch commands use `GIT_TERMINAL_PROMPT=0`; `git remote show` uses `-n` (no network access).
 
-**Installation note:** When stowing skill-explain-pull-request, use `--no-folding` so `~/.claude/skills/` stays a real directory (otherwise stow symlinks the whole directory into the repo and Claude Code writes its synced skills there): `stow --no-folding -t ~ skill-explain-pull-request`.
+**Installation note:** When stowing skill-explain-pull-request, use `--no-folding` so `~/.claude/skills/` and `~/.agents/skills/` (where `npx skills` installs too) stay real directories (otherwise stow symlinks the whole directory into the repo and Claude Code writes its synced skills there): `stow --no-folding -t ~ skill-explain-pull-request`.
 
 ### skill-create-junit-test Configuration
 Contains a user-invoked skill for generating, refactoring, and maintaining Java unit tests following comprehensive conventions. Use when writing new tests, refactoring existing tests, or for test maintenance when the code under test has evolved (constructor changed, API updated, tests broken after refactoring):
 - **`.claude/skills/create-junit-test/SKILL.md`** - Claude Code `/create-junit-test` slash command. Generates or refactors Java unit tests following JUnit 5, AssertJ, Mockito, and best practices (AAA structure, @Nested organization, parameterized tests, soft assertions, no mocks for data classes, etc.).
-- **`.copilot/skills/create-junit-test/SKILL.md`** - GitHub Copilot agent-mode prompt with equivalent workflow.
+- **`.agents/skills/create-junit-test/SKILL.md`** - GitHub Copilot (and other `.agents`-aware harnesses) skill with equivalent workflow.
 
 Both files enforce:
 - **JUnit 5 + AssertJ + Mockito** — detect availability, fallback gracefully
@@ -133,7 +124,7 @@ Both files enforce:
 - **Test data:** Object mother pattern for complex domain objects; inline constructors for simple values
 - **Coverage:** One assertion focus per test; test all branches (happy path, edges, errors, conditionals)
 
-**Installation note:** When stowing skill-create-junit-test, use `--no-folding` so `~/.claude/skills/` stays a real directory (otherwise stow symlinks the whole directory into the repo and Claude Code writes its synced skills there): `stow --no-folding -t ~ skill-create-junit-test`.
+**Installation note:** When stowing skill-create-junit-test, use `--no-folding` so `~/.claude/skills/` and `~/.agents/skills/` (where `npx skills` installs too) stay real directories (otherwise stow symlinks the whole directory into the repo and Claude Code writes its synced skills there): `stow --no-folding -t ~ skill-create-junit-test`.
 
 ### omz Configuration
 Contains portable Oh My Zsh plugin list:
@@ -232,7 +223,7 @@ A stack-agnostic "software factory" that takes a JIRA key or a free-text task an
 
 ## Repository Conventions
 - Each top-level directory is a stow package; its internal layout mirrors the target path under `~`.
-- Rules and skills exist in paired Claude Code (`.claude/`) and GitHub Copilot (`.copilot/`) variants — keep both in sync when changing either.
+- Rules and skills exist in paired Claude Code (`.claude/`) and GitHub Copilot variants (`.copilot/instructions/` for rules, `.agents/skills/` for skills) — keep both in sync when changing either.
 - When adding or changing a package, update `README.md` (contents, stow commands, symlink list) and this file.
 - Do not commit `skill-create-junit-test/.claude/skills/synced/` — it is generated by Claude tooling.
 
