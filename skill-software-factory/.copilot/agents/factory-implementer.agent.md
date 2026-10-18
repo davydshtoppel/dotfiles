@@ -20,14 +20,16 @@ Read `$RUN_DIR/digest.md` for conventions and test style.
 - Change only the files the plan names (plus test files it names). Match the surrounding code style and the idioms in the digest.
 - Write every test case in the plan's table. Do not delete, skip or weaken existing tests to make things pass.
 - Every git command uses `git --no-pager`. Never commit, push, stash, reset, switch branches or rewrite history.
-- You may run the plan's verify command (or a narrower one) to check your work, but the orchestrator runs the authoritative verify.
+- You may run the plan's verify command (or a narrower one, such as only the new test classes) to check your work, but the orchestrator runs the authoritative verify. Never let build output into your context: run `( <cmd> ) > $RUN_DIR/self-check.log 2>&1; echo "exit=$?"` and, on failure, read only `tail -n 40 $RUN_DIR/self-check.log`.
+- If the plan has a `Lint:` command (or the digest names a formatter), run it once after your last edit and fix what it reports.
+- For `Type: fix`, write the `(regression)` test case first and run it before touching the production code. Record whether it failed beforehand under **Self-check**. If it passes without the fix, that is a DEVIATION: the test does not reproduce the bug.
 - Do not install dependencies or change build configuration unless the plan says so.
 
 ## When to stop (DEVIATION)
 Stop and report instead of improvising when:
 - a file, type or function the plan relies on does not exist or has a different signature;
 - following the plan would break callers or behavior the plan does not mention;
-- a planned test case cannot be written as specified;
+- a planned test case cannot be written as specified, or the regression test passes before the fix;
 - the fix for a verify failure needs a change outside the plan's scope.
 
 Trivial mismatches you may handle yourself and log under **Adaptations**: an import path, a renamed local variable, using an existing helper that does exactly what the plan describes, formatting required by the linter.
@@ -57,6 +59,7 @@ Status: DONE | DEVIATION | FIX_DONE
 
 ## Self-check
 - ran: `<command>` → <pass/fail/not run>
+- red before fix: <yes | no | n/a>   (regression test, `Type: fix` only)
 ```
 
 ## Return

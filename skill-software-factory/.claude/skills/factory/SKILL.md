@@ -3,6 +3,7 @@ name: factory
 description: Software factory. Drives a JIRA ticket or a free-text task through explore → plan → your approval → implement → verify → your approval → commit/PR, using the factory-explorer, factory-planner and factory-implementer subagents. Use when the user runs /factory.
 argument-hint: <JIRA-KEY | task description> | resume [run-id]
 disable-model-invocation: true
+model: sonnet
 allowed-tools: Agent, Read, Grep, Glob, Write(.factory/**), Edit(.factory/**), Bash(git --no-pager status *), Bash(git --no-pager rev-parse *), Bash(git --no-pager diff *), Bash(git --no-pager log *), Bash(git --no-pager symbolic-ref *), Bash(git --no-pager rev-list *), Bash(git --no-pager branch --show-current), Bash(mkdir -p .factory/*), Bash(wc -l *)
 ---
 
@@ -103,7 +104,7 @@ Show the user a compact summary built from `plan.md`, **not** the whole file:
 - goal
 - acceptance criteria
 - a table of steps, each with its file and a one-line change description
-- the number of test cases
+- the number of test cases, and which acceptance criteria each covers (flag any criterion with no test case)
 - risks and open questions
 - the **verify command**
 - the full path `.factory/runs/<id>/plan.md`
@@ -123,7 +124,7 @@ On approval:
 
 Spawn `factory-implementer` with task `implement` (or `resume` after an amendment) and `RUN_DIR`. Validate `impl-report.md` (see Output validation), then branch on its `Status`:
 
-- **`DONE` / `FIX_DONE`** → set `phase: verify`.
+- **`DONE` / `FIX_DONE`** → run the gates (next section), then set `phase: verify`.
 - **`DEVIATION`:**
   - If `amendments` = 2, stop at a **deviation checkpoint**. Show the deviation and ask: **Re-plan from scratch** (move all `plan-amendment-*.md` to `.factory/runs/<id>/superseded/`, then back to Phase 2 with the deviation as feedback; reset `amendments` and `verify_failures` to 0) / **Give instructions** (planner `mode: revise` with the user's text, then implementer `resume`) / **Abort**.
   - Otherwise:
@@ -131,6 +132,16 @@ Spawn `factory-implementer` with task `implement` (or `resume` after an amendmen
     2. Spawn `factory-planner` with `mode: amend`, `N` (see Loop caps), and `RUN_DIR`. It reads the deviation from `impl-report.md`.
     3. If the amendment says `Scope change: yes`, show the amendment to the user and ask **Approve amendment / Revise / Abort** before continuing.
     4. Spawn `factory-implementer` with task `resume`.
+
+## Gates (cheap deterministic checks, before verify)
+
+Run these yourself with git and Grep; they cost no subagent tokens. Skip the test gates for steps that have no test cases.
+
+1. **Scope.** Every path in `git --no-pager status --porcelain -uall` (leaving out `preexisting_dirty`) must be a path named in `plan.md` steps or amendments, or a test file named in the test cases. Anything else is out of scope.
+2. **Tests present.** For every `file :: name` in the plan's test table (and amendments), Grep the file for the test name. A missing file or name is a miss.
+3. **No weakened tests.** `git --no-pager diff <base_branch> -- <test files>` must not remove test annotations/functions or assertions that the plan did not replace, and must not add skip markers (`@Disabled`, `@Ignore`, `.skip(`, `xit(`, `xdescribe(`, `@pytest.mark.skip`, `t.Skip(`).
+
+On a miss, count it like the 1st verify failure: increment `verify_failures` and spawn `factory-implementer` with task `fix` and the gate findings as the notes (for scope: revert the extra change or justify it under Adaptations). If a gate misses again after that, stop as for the 3rd verify failure. Record `gates: pass | fail` in `state.md`.
 
 ## Phase 4 — Verify (you run it, never trust the implementer's self-check)
 
@@ -159,7 +170,7 @@ A tool timeout (no `exit=` line printed) counts as a failure; record `last_verif
 
 Show:
 1. `git --no-pager status --porcelain -uall` (leaving out `preexisting_dirty` paths) and `git --no-pager diff --stat`.
-2. The verify result: pass with duration, `not run (none)`, or `accepted unverified`. Also list pre-existing baseline failures, if any. If `full_cmd` differs from `verify_cmd`, say that only the narrow command ran; the user can ask for `full_cmd` under **Request changes**.
+2. The gate result (`gates:`) and the verify result: pass with duration, `not run (none)`, or `accepted unverified`. Also list pre-existing baseline failures, if any. If `full_cmd` differs from `verify_cmd`, say that only the narrow command ran; the user can ask for `full_cmd` under **Request changes**.
 3. The **Adaptations** from `impl-report.md`, and any amendments with their one-line causes.
 4. A draft commit message: the subject from the plan's `## Git` section (≤72 chars, ticket key included if there is one); the body gives what and why in 2-4 lines.
 5. A hint that the user can inspect the full diff with `git diff` before deciding.
@@ -198,6 +209,7 @@ Ask with AskUserQuestion:
 - preexisting_dirty: <paths or ->
 - amendments: <0-2>
 - verify_failures: <n>
+- gates: <pass | fail | not run>
 - last_verify: <pass 42s | fail | timeout | not run>
 - updated: <ISO timestamp>
 - note: <one line: what happens next>
