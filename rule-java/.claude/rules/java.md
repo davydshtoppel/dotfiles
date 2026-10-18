@@ -1,5 +1,5 @@
 ---
-description: Java rules: pragmatic design, reuse, boundary validation, Checkstyle style, JSpecify, JDK 25 idioms
+description: Java rules: pragmatic design, reuse, boundary validation, style, JSpecify, JDK 25 idioms
 paths:
   - "**/*.java"
 ---
@@ -20,9 +20,9 @@ Existing project conventions win. Don't reformat code you didn't touch.
 - Validate input once, where it enters the system (endpoint, consumer, loader). Inside, trust the contract and JSpecify: no defensive checks per method.
 - Never swallow exceptions; wrap with the cause attached. Don't log and rethrow. No exceptions for control flow.
 - `Optional` only as a return type.
+- Log with SLF4J placeholders, not string concatenation; log once, where the exception is handled.
 
 ## Style
-- Naming: `UpperCamelCase` types, `lowerCamelCase` members, `UPPER_SNAKE_CASE` constants, lowercase packages.
 - Imports: third-party, `javax.*`, `java.*`, static; alphabetical, groups separated by a blank line; no wildcard or `import module`.
 - Formatting: 4-space indent, 100-char lines, braces always, opening brace on the same line.
 - Package-private by default. `final` on classes (unless designed for extension), parameters and fields.

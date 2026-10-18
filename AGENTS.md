@@ -52,19 +52,19 @@ Uses a custom Gruvbox Dark color palette with a multi-segment format. Each segme
 
 ### rule-java Configuration
 Contains Java design and style guidance for code generation tools (replaces the former `rule-gof`: the GoF catalog was dropped in favour of pragmatic design rules):
-- **`.copilot/instructions/java.instructions.md`** - GitHub Copilot instruction file with pragmatic design rules, boundary validation, Sun Checkstyle conventions, JSpecify nullability, and JDK 25 idioms. Applied to Java files.
+- **`.copilot/instructions/java.instructions.md`** - GitHub Copilot instruction file with pragmatic design rules, boundary validation, style conventions, JSpecify nullability, and JDK 25 idioms. Applied to Java files.
 - **`.claude/rules/java.md`** - Claude Code rule file auto-loaded for Java files. Provides the same style guidance when working in Claude Code.
 
-Both files cover design (idioms over patterns, reuse existing utilities, interfaces as test seams, rule of three), validation at entry points only, naming, import ordering, nullability annotations, the `final` keyword, and JDK 25 idioms (pattern-matching switch, records, sealed types, virtual threads, `ScopedValue`).
+Both files cover design (idioms over patterns, reuse existing utilities, interfaces as test seams, rule of three), validation at entry points only, logging, import ordering, nullability annotations, the `final` keyword, and JDK 25 idioms (pattern-matching switch, records, sealed types, virtual threads, `ScopedValue`).
 
 **Installation note:** When stowing rule-java, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-java`. This allows other rules to coexist in `~/.claude/rules/` and `~/.copilot/instructions/`.
 
 ### rule-maven Configuration
 Contains Maven build conventions for code generation tools:
-- **`.copilot/instructions/maven.instructions.md`** - GitHub Copilot instruction file with Maven command best practices: `-f` for module targeting, `-T 1C` for parallelism, and build cache flags. Applied to POM files and JVM language source files.
+- **`.copilot/instructions/maven.instructions.md`** - GitHub Copilot instruction file with Maven command best practices: `-f` for module targeting, `-B -ntp` for compact output, narrowest-goal guidance, and build cache flags. Maven projects only (skipped for Gradle). Applied to POM files and JVM language source files.
 - **`.claude/rules/maven.md`** - Claude Code rule file auto-loaded for the same file types. Provides the same Maven build conventions when working in Claude Code.
 
-Both files cover module targeting (using `-f` instead of `-pl`), parallel execution (`-T 1C`), disabling build cache (`-Dmaven.build.cache.enabled=false`), and output quality flags.
+Both files cover module targeting (using `-f` instead of `-pl`, plus the `~/.m2` sibling-module caveat), compact output (`-B -ntp`), the narrowest goal (`test-compile`, `-Dtest=…`), parallel execution (`-T 1C`, only useful on aggregator POMs), and disabling build cache (`-Dmaven.build.cache.enabled=false`).
 
 Applies to: `**/pom.xml`, `**/*.java`, `**/*.kt`, `**/*.kts`, `**/*.scala`, `**/*.groovy` — all common JVM language files where Maven builds are used.
 

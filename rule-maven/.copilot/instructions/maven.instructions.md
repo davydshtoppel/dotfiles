@@ -1,31 +1,19 @@
 ---
-description: 'Maven build conventions: -f for module targeting, -T 1C parallelism, and build cache disabled.'
+description: 'Maven build conventions: -f for module targeting, -B -ntp quiet output, narrowest goal, build cache disabled.'
 applyTo: '**/pom.xml, **/*.java, **/*.kt, **/*.kts, **/*.scala, **/*.groovy'
 ---
 
-# Maven Build Rules
+# Maven Rules
 
-These instructions configure GitHub Copilot to follow Maven build conventions when generating or suggesting Maven commands.
+Only for Maven projects (`pom.xml` present); skip for Gradle. Use `./mvnw` instead of `mvn` when it exists.
 
-## Module Targeting
-- Always use `-f <path/to/pom.xml>` to target a specific module — never `-pl <module-name>`
-- `-pl` relies on the reactor; a module may be silently excluded when the activating profile is absent
-- Example: `mvn -f services/payment/pom.xml verify` instead of `mvn -pl services/payment verify`
-
-## Parallelism
-- Always add `-T 1C` to all multi-step goals (`compile`, `test`, `package`, `verify`, `install`)
-- `1C` means one thread per available CPU core, which scales automatically across machines
-- Example: `mvn -T 1C -f path/to/pom.xml verify`
-
-## Disable Build Cache
-- Add `-Dmaven.build.cache.enabled=false` to disable the Maven Build Cache Extension
-- This guarantees a cache-independent result suitable for CI and troubleshooting
-
-## Output Quality
-- Add `--no-transfer-progress` (`-ntp`) to suppress noisy download progress bars
-- Use `-fae` (fail at end) when running tests across multiple modules — reports all failures rather than aborting on the first
-
-## Canonical Form
+Canonical form:
 ```bash
-mvn -T 1C -ntp -Dmaven.build.cache.enabled=false -f path/to/pom.xml <goal>
+mvn -B -ntp -T 1C -Dmaven.build.cache.enabled=false -f path/to/pom.xml <goal>
 ```
+
+- Target modules with `-f <module>/pom.xml`, not `-pl`. With `-f`, sibling modules resolve from `~/.m2`: after changing an upstream module, `install` it first or build from the root POM.
+- `-B -ntp`: plain log without colors or download progress (smaller output).
+- `-T 1C` and `-fae` (report all module failures) only matter when the target POM aggregates modules.
+- Build cache off so results are never served from cache after edits.
+- Run the narrowest goal: `test-compile` to check types; `-Dtest=Class#method -Dsurefire.failIfNoSpecifiedTests=false` for single tests; full `verify` only before finishing.
