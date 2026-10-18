@@ -40,8 +40,8 @@ Run each one as a **subagent**, by name. Pass `RUN_DIR` and the mode or task in 
 The user's message is `INPUT`.
 
 - Empty → print usage and stop: `<JIRA-KEY | task description>` or `resume [run-id]`.
-- `resume` with no id → list `.factory/runs/*/state.md` (id, phase, updated) and stop.
-- `resume <id>` → read `.factory/runs/<id>/state.md` and continue at its `phase`. Re-show the pending checkpoint if the phase is a checkpoint.
+- `resume` with no id → list `.software-factory/runs/*/state.md` (id, phase, updated) and stop.
+- `resume <id>` → read `.software-factory/runs/<id>/state.md` and continue at its `phase`. Re-show the pending checkpoint if the phase is a checkpoint.
   - First compare `git --no-pager branch --show-current` with `branch` in `state.md` (when set). If they differ, ask: switch back / abort.
   - Phase `implement` → implementer task `resume` if `impl-report.md` exists, else `implement`. Phase `verify` → run verify again. Phase `commit` → check `git --no-pager log -1` before committing again.
 - Otherwise → new run.
@@ -94,10 +94,10 @@ On a miss, run that subagent once more with the problem stated. If it still fail
      - Collect summary, description, acceptance criteria, and linked subtasks or comments only if relevant.
      - If no such tool exists or the fetch fails, ask whether it is a ticket (the user pastes the text) or free text (treat `INPUT` as the task).
    - Otherwise `INPUT` is the task text.
-4. **Run id.** Use the ticket key, or for free text a kebab-case slug of the first ~5 meaningful words plus `-MMDD`. If `.factory/runs/<id>` exists, ask: resume it, or start a new run as `<id>-2`.
+4. **Run id.** Use the ticket key, or for free text a kebab-case slug of the first ~5 meaningful words plus `-MMDD`. If `.software-factory/runs/<id>` exists, ask: resume it, or start a new run as `<id>-2`.
 5. **Run dir.**
-   - `mkdir -p .factory/runs/<id>`.
-   - Ensure `.factory/` is in `$(git rev-parse --git-common-dir)/info/exclude`: append it only if missing. Never edit `.gitignore`.
+   - `mkdir -p .software-factory/runs/<id>`.
+   - Ensure `.software-factory/` is in `$(git rev-parse --git-common-dir)/info/exclude`: append it only if missing. Never edit `.gitignore`.
    - Write `task.md` with the ticket or task text, verbatim.
    - Write `usage.md` with the header row and separator line of the Usage ledger table.
 6. **Base branch.**
@@ -108,7 +108,7 @@ On a miss, run that subagent once more with the problem stated. If it still fail
 
 ## Phase 1 — Explore
 
-Run the `software-factory-explorer` subagent. In the prompt, pass `RUN_DIR=.factory/runs/<id>` and tell it to read the task from `$RUN_DIR/task.md` and write `$RUN_DIR/digest.md`.
+Run the `software-factory-explorer` subagent. In the prompt, pass `RUN_DIR=.software-factory/runs/<id>` and tell it to read the task from `$RUN_DIR/task.md` and write `$RUN_DIR/digest.md`.
 
 Validate `digest.md` (see Output validation), then set `phase: plan`.
 
@@ -129,7 +129,7 @@ Show the user a compact summary built from `plan.md`, **not** the whole file:
 - the number of test cases, and which acceptance criteria each covers (flag any criterion with no test case)
 - risks and open questions
 - the **verify command**
-- the full path `.factory/runs/<id>/plan.md`
+- the full path `.software-factory/runs/<id>/plan.md`
 
 Then ask:
 1. **Approve:** continue to implementation with this verify command.
@@ -148,7 +148,7 @@ Run the `software-factory-implementer` subagent with task `implement` (or `resum
 
 - **`DONE` / `FIX_DONE`** → run the gates (next section), then set `phase: verify`.
 - **`DEVIATION`:**
-  - If `amendments` = 2, stop at a **deviation checkpoint**. Show the deviation and ask: **Re-plan from scratch** (move all `plan-amendment-*.md` to `.factory/runs/<id>/superseded/`, then back to Phase 2 with the deviation as feedback; reset `amendments` and `verify_failures` to 0) / **Give instructions** (planner `mode: revise` with the user's text, then implementer `resume`) / **Abort**.
+  - If `amendments` = 2, stop at a **deviation checkpoint**. Show the deviation and ask: **Re-plan from scratch** (move all `plan-amendment-*.md` to `.software-factory/runs/<id>/superseded/`, then back to Phase 2 with the deviation as feedback; reset `amendments` and `verify_failures` to 0) / **Give instructions** (planner `mode: revise` with the user's text, then implementer `resume`) / **Abort**.
   - Otherwise:
     1. Increment `amendments`.
     2. Run `software-factory-planner` with `mode: amend`, `N` (see Loop caps), and `RUN_DIR`. It reads the deviation from `impl-report.md`.
@@ -172,14 +172,14 @@ If `verify_cmd` is `none`, record `verify: not run (no build/test setup)` and go
 Otherwise run the command in the terminal, allowing up to 10 minutes. Use this form, so that only a short tail enters the context:
 
 ```bash
-start=$(date +%s); ( <verify_cmd> ) > .factory/runs/<id>/verify.log 2>&1; rc=$?; echo "exit=$rc duration=$(( $(date +%s) - start ))s"; [ $rc -eq 0 ] || tail -n 80 .factory/runs/<id>/verify.log
+start=$(date +%s); ( <verify_cmd> ) > .software-factory/runs/<id>/verify.log 2>&1; rc=$?; echo "exit=$rc duration=$(( $(date +%s) - start ))s"; [ $rc -eq 0 ] || tail -n 80 .software-factory/runs/<id>/verify.log
 ```
 
 A tool timeout (no `exit=` line printed) counts as a failure; record `last_verify: timeout`.
 
 - **Pass** → record the duration and set `phase: checkpoint-2`. If the duration is over 180 s, note it, so that checkpoint 2 can suggest a narrower command for next time.
 - **Fail** → increment `verify_failures`, then:
-  - 1st failure → run `software-factory-implementer` with task `fix`, `RUN_DIR`, and the path `.factory/runs/<id>/verify.log`. Then go back to Phase 3's status handling, so that a DEVIATION during the fix is handled as a deviation.
+  - 1st failure → run `software-factory-implementer` with task `fix`, `RUN_DIR`, and the path `.software-factory/runs/<id>/verify.log`. Then go back to Phase 3's status handling, so that a DEVIATION during the fix is handled as a deviation.
   - 2nd failure → if `amendments` < 2:
     1. Increment `amendments`.
     2. Run `software-factory-planner` with `mode: diagnose`, `N` (see Loop caps), and `RUN_DIR` (it reads `verify.log`).
