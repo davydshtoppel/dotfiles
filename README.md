@@ -13,8 +13,6 @@ Personal configuration files for editor and shell environments.
 - **vscode/Library/Application Support/Code/User/settings.json** - VS Code user settings (macOS), including VSCodeVim config mirroring `.vimrc`
 - **rule-java/.copilot/instructions/java.instructions.md** - GitHub Copilot instruction for Java design and style
 - **rule-java/.claude/rules/java.md** - Claude Code rule for Java design and style
-- **rule-maven/.copilot/instructions/maven.instructions.md** - GitHub Copilot instruction for Maven build conventions
-- **rule-maven/.claude/rules/maven.md** - Claude Code rule for Maven build conventions
 - **skill-explain-diff/.claude/skills/explain-diff/SKILL.md** - Claude Code `/explain-diff` skill for analyzing changes between branches
 - **skill-explain-diff/.agents/skills/explain-diff/SKILL.md** - GitHub Copilot equivalent for branch diff analysis
 - **skill-explain-pull-request/.claude/skills/explain-pull-request/SKILL.md** - Claude Code `/explain-pull-request` skill for analyzing a PR/MR by number
@@ -61,8 +59,6 @@ This creates symbolic links for:
 - `vscode/Library/Application Support/Code/User/settings.json` → `~/Library/Application Support/Code/User/settings.json`
 - `rule-java/.copilot/instructions/java.instructions.md` → `~/.copilot/instructions/java.instructions.md`
 - `rule-java/.claude/rules/java.md` → `~/.claude/rules/java.md`
-- `rule-maven/.copilot/instructions/maven.instructions.md` → `~/.copilot/instructions/maven.instructions.md`
-- `rule-maven/.claude/rules/maven.md` → `~/.claude/rules/maven.md`
 - `skill-explain-diff/.claude/skills/explain-diff/SKILL.md` → `~/.claude/skills/explain-diff/SKILL.md`
 - `skill-explain-diff/.agents/skills/explain-diff/SKILL.md` → `~/.agents/skills/explain-diff/SKILL.md`
 - `skill-explain-pull-request/.claude/skills/explain-pull-request/SKILL.md` → `~/.claude/skills/explain-pull-request/SKILL.md`
@@ -86,7 +82,6 @@ stow -t ~ fzf                          # FZF configuration only
 stow -t ~ ltree                        # tree-mimicking script for FZF Alt-C preview
 stow --no-folding -t ~ vscode          # VS Code settings (macOS)
 stow --no-folding -t ~ rule-java       # Java design & style rules (Copilot & Claude Code)
-stow --no-folding -t ~ rule-maven      # Maven build conventions rules (Copilot & Claude Code)
 stow --no-folding -t ~ skill-explain-diff           # Branch diff analysis skill (Copilot & Claude Code)
 stow --no-folding -t ~ skill-explain-pull-request   # PR analysis skill (Copilot & Claude Code)
 stow --no-folding -t ~ skill-create-junit-test      # JUnit test generation skill (Copilot & Claude Code)
@@ -113,7 +108,7 @@ To remove all symlinks:
 
 ```bash
 stow -t ~ -D vim ideavim starship fzf omz ltree
-stow --no-folding -t ~ -D rule-java rule-maven
+stow --no-folding -t ~ -D rule-java
 stow --no-folding -t ~ -D skill-explain-diff skill-explain-pull-request skill-create-junit-test
 stow --no-folding -t ~ -D skill-software-factory
 stow --no-folding -t ~ -D vscode

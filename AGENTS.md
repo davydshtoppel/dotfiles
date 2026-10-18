@@ -12,8 +12,6 @@ This is a personal dotfiles repository containing editor and shell configuration
 - **vscode/Library/Application Support/Code/User/settings.json** - VS Code user settings (macOS), including VSCodeVim config mirroring `.vimrc`
 - **rule-java/.copilot/instructions/java.instructions.md** - GitHub Copilot instruction for Java style conventions
 - **rule-java/.claude/rules/java.md** - Claude Code rule for Java style conventions
-- **rule-maven/.copilot/instructions/maven.instructions.md** - GitHub Copilot instruction for Maven build conventions
-- **rule-maven/.claude/rules/maven.md** - Claude Code rule for Maven build conventions
 - **skill-explain-diff/.claude/skills/explain-diff/SKILL.md** - Claude Code `/explain-diff` skill for analyzing changes between branches
 - **skill-explain-diff/.agents/skills/explain-diff/SKILL.md** - GitHub Copilot equivalent for branch diff analysis
 - **skill-explain-pull-request/.claude/skills/explain-pull-request/SKILL.md** - Claude Code `/explain-pull-request` skill for analyzing a PR/MR by number
@@ -58,17 +56,6 @@ Contains Java design and style guidance for code generation tools (replaces the 
 Both files cover design (idioms over patterns, reuse existing utilities, interfaces as test seams, rule of three), validation at entry points only, logging, import ordering, nullability annotations, the `final` keyword, and JDK 25 idioms (pattern-matching switch, records, sealed types, virtual threads, `ScopedValue`).
 
 **Installation note:** When stowing rule-java, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-java`. This allows other rules to coexist in `~/.claude/rules/` and `~/.copilot/instructions/`.
-
-### rule-maven Configuration
-Contains Maven build conventions for code generation tools:
-- **`.copilot/instructions/maven.instructions.md`** - GitHub Copilot instruction file with Maven command best practices: `-f` for module targeting, `-B -ntp` for compact output, narrowest-goal guidance, and build cache flags. Maven projects only (skipped for Gradle). Applied to POM files and JVM language source files.
-- **`.claude/rules/maven.md`** - Claude Code rule file auto-loaded for the same file types. Provides the same Maven build conventions when working in Claude Code.
-
-Both files cover module targeting (using `-f` instead of `-pl`, plus the `~/.m2` sibling-module caveat), compact output (`-B -ntp`), the narrowest goal (`test-compile`, `-Dtest=…`), parallel execution (`-T 1C`, only useful on aggregator POMs), and disabling build cache (`-Dmaven.build.cache.enabled=false`).
-
-Applies to: `**/pom.xml`, `**/*.java`, `**/*.kt`, `**/*.kts`, `**/*.scala`, `**/*.groovy` — all common JVM language files where Maven builds are used.
-
-**Installation note:** When stowing rule-maven, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-maven`. This allows other rules to coexist in `~/.claude/rules/` and `~/.copilot/instructions/`.
 
 ### vscode Configuration
 Contains VS Code user configuration for macOS:
