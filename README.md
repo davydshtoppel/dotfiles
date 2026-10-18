@@ -25,6 +25,8 @@ Personal configuration files for editor and shell environments.
 - **skill-explain-pull-request/.copilot/skills/explain-pull-request/SKILL.md** - GitHub Copilot equivalent for PR analysis
 - **skill-create-junit-test/.claude/skills/create-junit-test/SKILL.md** - Claude Code `/create-junit-test` skill for JUnit 5 test generation
 - **skill-create-junit-test/.copilot/skills/create-junit-test/SKILL.md** - GitHub Copilot equivalent for JUnit test generation
+- **skill-software-factory/.claude/skills/factory/SKILL.md** + **skill-software-factory/.claude/agents/factory-*.md** - Claude Code `/factory` software factory (explorer → planner → implementer with two approval checkpoints)
+- **skill-software-factory/.copilot/agents/factory*.agent.md** - GitHub Copilot equivalent (`factory` custom agent + subagents) for VS Code and Copilot CLI
 
 ## Installation
 
@@ -50,6 +52,7 @@ cd /path/to/dotfiles
 stow -t ~ vim ideavim starship fzf omz ltree
 stow --no-folding -t ~ rule-gof rule-java rule-maven rule-no-terminal-history
 stow --no-folding -t ~ skill-explain-diff skill-explain-pull-request skill-create-junit-test
+stow --no-folding -t ~ skill-software-factory
 stow --no-folding -t ~ vscode   # macOS only
 ```
 
@@ -75,6 +78,9 @@ This creates symbolic links for:
 - `skill-explain-pull-request/.copilot/skills/explain-pull-request/SKILL.md` → `~/.copilot/skills/explain-pull-request/SKILL.md`
 - `skill-create-junit-test/.claude/skills/create-junit-test/SKILL.md` → `~/.claude/skills/create-junit-test/SKILL.md`
 - `skill-create-junit-test/.copilot/skills/create-junit-test/SKILL.md` → `~/.copilot/skills/create-junit-test/SKILL.md`
+- `skill-software-factory/.claude/skills/factory/SKILL.md` → `~/.claude/skills/factory/SKILL.md`
+- `skill-software-factory/.claude/agents/factory-{explorer,planner,implementer}.md` → `~/.claude/agents/`
+- `skill-software-factory/.copilot/agents/factory{,-explorer,-planner,-implementer}.agent.md` → `~/.copilot/agents/`
 
 ### Apply Individual Packages
 
@@ -95,6 +101,7 @@ stow --no-folding -t ~ rule-no-terminal-history  # Terminal history suppression 
 stow --no-folding -t ~ skill-explain-diff           # Branch diff analysis skill (Copilot & Claude Code)
 stow --no-folding -t ~ skill-explain-pull-request   # PR analysis skill (Copilot & Claude Code)
 stow --no-folding -t ~ skill-create-junit-test      # JUnit test generation skill (Copilot & Claude Code)
+stow --no-folding -t ~ skill-software-factory       # Software factory skill + subagents (Copilot & Claude Code)
 ```
 
 ### Remove Dotfiles
@@ -105,6 +112,7 @@ To remove all symlinks:
 stow -t ~ -D vim ideavim starship fzf omz ltree
 stow --no-folding -t ~ -D rule-gof rule-java rule-maven rule-no-terminal-history
 stow -t ~ -D skill-explain-diff skill-explain-pull-request skill-create-junit-test
+stow --no-folding -t ~ -D skill-software-factory
 stow --no-folding -t ~ -D vscode
 ```
 
@@ -124,3 +132,4 @@ stow -t ~ -D vim          # Remove Vim configuration
 - **OMZ:** Add `[ -f ~/.omzrc ] && source ~/.omzrc` to `.zshrc` to activate
 - **ltree:** `ltree/.local/bin/ltree` is a small zsh script mimicking `tree -C` for machines without Homebrew's `tree` (used by `fzf`'s Alt-C preview via `FZF_ALT_C_OPTS`). Ensure `~/.local/bin` is on `PATH` in `.zshrc` (e.g. `export PATH="$HOME/.local/bin:$PATH"`) so it can be found
 - **VS Code:** macOS only. Stow with `--no-folding` so `~/Library/Application Support/Code/User/` stays a real directory (it holds machine-local state). If a real `settings.json` already exists there, move it away first (stow will not overwrite it). Avoid enabling Settings Sync for `settings.json` alongside stow
+- **skill-software-factory:** Entry point is `/factory <JIRA-KEY | task>` in Claude Code, or the `factory` agent in VS Code (agent picker) / Copilot CLI (`copilot --agent factory`, interactive only). Flow: explore (light model) → plan (strong) → **checkpoint 1** → implement (mid) → verify → **checkpoint 2** → commit/PR. Runs are stored in `<project>/.factory/runs/<id>/` (added to `.git/info/exclude`) and can be continued with `resume <id>`. No per-project config: the verify command, commit/branch conventions, and the JIRA/PR tools (project skills, MCP, `gh`/`glab`) are auto-detected each run. Keep `git push` behind an approval prompt (`"ask": ["Bash(git push *)"]` in `~/.claude/settings.json`; avoid `--allow-all` in Copilot CLI). Copilot `model:` lists start with the Copilot CLI ID (the CLI only tries the first entry and falls back to `auto` if it is unavailable), followed by VS Code display names (VS Code tries each in order). Adjust them to your subscription, or override per subagent in `~/.copilot/settings.json` via `subagents.agents.<name>.model`

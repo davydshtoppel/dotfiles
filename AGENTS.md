@@ -26,6 +26,8 @@ This is a personal dotfiles repository containing editor and shell configuration
 - **skill-create-junit-test/.copilot/skills/create-junit-test/SKILL.md** - GitHub Copilot equivalent for JUnit test generation
 - **fzf/.fzfrc** - FZF key bindings, preview options, and shell integration (`source <(fzf --zsh)`)
 - **ltree/.local/bin/ltree** - Colorized `tree`-mimicking zsh script for the FZF Alt-C preview, for machines without Homebrew's `tree`
+- **skill-software-factory/.claude/skills/factory/SKILL.md** + **skill-software-factory/.claude/agents/factory-*.md** - Claude Code `/factory` software factory: orchestrator skill + explorer/planner/implementer subagents
+- **skill-software-factory/.copilot/agents/factory*.agent.md** - GitHub Copilot equivalent: `factory` orchestrator custom agent + the same three subagents
 
 ## Architecture & Key Relationships
 
@@ -163,6 +165,23 @@ Contains a self-contained zsh script that mimics enough of `tree`'s behavior to 
 Supported flags: `-C` (colorize output — directories bold blue, executables bold green, symlinks cyan, broken symlinks red), `-a` (show dotfiles), `-d` (directories only), `-L <n>` (depth limit), `--dirsfirst` (list directories before files per level). Unrecognized flags are ignored rather than erroring. Traps `SIGPIPE` so it exits cleanly when truncated by `| head -200`. This is intentionally minimal — not a full `tree` reimplementation (no `-I`/`-P` filters, no `-h`/`-s` sizes, no `--gitignore`; symlinked directories are shown but never followed).
 
 **Installation note:** `stow -t ~ ltree` — no `--no-folding` needed. Ensure `~/.local/bin` is on `PATH` (e.g. `export PATH="$HOME/.local/bin:$PATH"` in `.zshrc`) so `ltree` can be found.
+
+### skill-software-factory Configuration
+A stack-agnostic "software factory" that takes a JIRA key or a free-text task and runs it through explore → plan → **checkpoint 1** → implement → verify → **checkpoint 2** → commit/PR.
+- **`.claude/skills/factory/SKILL.md`** - `/factory <JIRA-KEY | task> | resume [id]` orchestrator. It runs in the main thread (not forked) so it can spawn subagents and use AskUserQuestion. `disable-model-invocation: true`.
+- **`.claude/agents/factory-explorer.md`** (haiku), **`factory-planner.md`** (opus), **`factory-implementer.md`** (sonnet) - the subagents.
+- **`.copilot/agents/factory.agent.md`** - Copilot orchestrator. Same flow; the `agents:` allowlist names the three subagents. `tools` is omitted on purpose so project JIRA/PR MCP tools and skills stay available.
+- **`.copilot/agents/factory-{explorer,planner,implementer}.agent.md`** - Copilot subagents (`user-invocable: false`). Their bodies are identical to the Claude agents; only the frontmatter differs (Copilot tool aliases, `model:` priority lists).
+
+**Design constraints (keep them when editing):**
+- **Only the explorer reads the codebase broadly.** The planner opens only the files named in the digest. The orchestrator passes file paths, not file contents.
+- **Handoffs are size-capped files** in `<project>/.factory/runs/<id>/`: `task.md`, `digest.md` ≤150 lines, `plan.md` ≤200, `plan-amendment-N.md` ≤80, `impl-report.md` ≤60, `state.md`, and `verify.log`. `.factory/` is added to `.git/info/exclude`, never to `.gitignore`.
+- **No per-project config.** The explorer detects one verify command (from project docs → CI config → build files) plus the commit/branch conventions. You approve the verify command at checkpoint 1, and the orchestrator runs it itself; it never trusts the implementer's self-check. JIRA and PR tooling come from whatever the session has (project skills or MCP, else `gh`/`glab`, else a compare URL).
+- **Loops.** The implementer stops with a `DEVIATION` instead of improvising, and the planner answers with a delta amendment. `amendments` ≤2 per run, shared with verify escalations (1st failure → implementer fix, 2nd → planner diagnose, 3rd → stop). Caps hand control back to you.
+- **Planner design rules.** Idioms first. A design pattern needs a justification, the rejected simpler alternative, and ≥2 concrete variants or a real extension point. This deliberately does not use `rule-gof`.
+- **Not in the MVP yet:** plan-reviewer, code-reviewer, S/M/L triage, and a commit guard hook. Commit, push and PR rely on checkpoint 2 plus platform approval prompts.
+
+**Installation note:** `stow --no-folding -t ~ skill-software-factory`. `--no-folding` keeps `~/.claude/agents`, `~/.claude/skills` and `~/.copilot/agents` as real directories.
 
 ## Important Configuration Details
 
