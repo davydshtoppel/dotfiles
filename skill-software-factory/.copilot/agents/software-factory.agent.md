@@ -70,6 +70,19 @@ After every subagent returns, check its file before using it: it exists, it is n
 
 On a miss, run that subagent once more with the problem stated. If it still fails, stop and show the user the problem.
 
+## Usage ledger
+
+`usage.md` in the run dir is an append-only ledger with one row per subagent run. Right after every subagent returns (before Output validation), add a row:
+
+`| # | phase | agent | mode/task | model | tokens | tool_uses | duration |`
+
+- `model` is the first entry of the subagent's `model:` list (the configured model, not necessarily the one that ran).
+- `tokens`, `tool_uses` and `duration` are the values the subagent result reports; write `n/a` when it reports none (Copilot often does not).
+- A retry from Output validation gets its own row.
+- Keep `subagent_tokens` in `state.md` as the running sum of the `tokens` column (`n/a` rows count as 0).
+
+**Report.** At `phase: done` and `phase: aborted`, show a table grouped by agent (runs, summed tokens, tool uses and duration), plus a total. At checkpoint 2, show only the total in one line. Add the caveat: figures are approximate or missing; for real usage see Copilot's own usage view.
+
 ## Phase 0 — Intake
 
 1. **Repo check.** `git --no-pager rev-parse --show-toplevel` must succeed; otherwise stop and say the factory needs a git repo. Work from the repo root.
@@ -86,6 +99,7 @@ On a miss, run that subagent once more with the problem stated. If it still fail
    - `mkdir -p .factory/runs/<id>`.
    - Ensure `.factory/` is in `$(git rev-parse --git-common-dir)/info/exclude`: append it only if missing. Never edit `.gitignore`.
    - Write `task.md` with the ticket or task text, verbatim.
+   - Write `usage.md` with the header row and separator line of the Usage ledger table.
 6. **Base branch.**
    - Default branch: `git --no-pager symbolic-ref --short refs/remotes/origin/HEAD` without the `origin/` prefix, else `main` or `master`, whichever exists.
    - If HEAD is detached, or the current branch differs from the default branch, ask which to base the work on: default branch (recommended) / current branch / abort.
@@ -121,7 +135,7 @@ Then ask:
 1. **Approve:** continue to implementation with this verify command.
 2. **Revise plan:** the user says what to change. Re-run `software-factory-planner` in `mode: plan` with the feedback appended to the prompt. User-requested revisions do not count against `amendments`. Return to Checkpoint 1.
 3. **Change verify command:** take the new command, update `state.md`, and ask again.
-4. **Abort:** set `phase: aborted` and stop. Leave the run dir in place.
+4. **Abort:** set `phase: aborted`, show the usage report and stop. Leave the run dir in place.
 
 On approval:
 1. Create the branch named in the `## Git` section of `plan.md`: `git switch -c <branch> <base_branch>`. Record `branch` in `state.md`.
@@ -181,7 +195,8 @@ Show:
 2. The gate result (`gates:`) and the verify result: pass with duration, `not run (none)`, or `accepted unverified`. Also list pre-existing baseline failures, if any. If `full_cmd` differs from `verify_cmd`, say that only the narrow command ran; the user can ask for `full_cmd` under **Request changes**.
 3. The **Adaptations** from `impl-report.md`, and any amendments with their one-line causes.
 4. A draft commit message: the subject from the plan's `## Git` section (≤72 chars, ticket key included if there is one); the body gives what and why in 2-4 lines.
-5. A hint that the user can inspect the full diff with `git diff` before deciding.
+5. The subagent token total so far (one line, from `subagent_tokens`).
+6. A hint that the user can inspect the full diff with `git diff` before deciding.
 
 Ask:
 1. **Commit, push and open PR**
@@ -190,7 +205,7 @@ Ask:
    - Small and within the plan → run `software-factory-implementer` with task `fix` and the user's notes.
    - Otherwise → run `software-factory-planner` with `mode: revise`, `N` (see Loop caps) and the notes, then the implementer with task `resume`. User-requested changes do not count against `amendments`.
    - Reset `verify_failures` to 0, verify again, and return here.
-4. **Abort:** leave the changes in the worktree on the branch, set `phase: aborted`, and stop.
+4. **Abort:** leave the changes in the worktree on the branch, set `phase: aborted`, show the usage report, and stop.
 
 ## Phase 5 — Commit / PR
 
@@ -201,7 +216,7 @@ Ask:
    3. otherwise print the host's compare/new-PR URL for the branch.
 
    The PR title is the commit subject. The PR body gives the goal, the acceptance criteria as a checklist, the test cases added, the verify result, and the ticket key or link.
-3. Set `phase: done`, and report the branch, commit SHA and PR URL in 3-5 lines.
+3. Set `phase: done`, report the branch, commit SHA and PR URL in 3-5 lines, then show the usage report.
 
 ## `state.md` format (overwrite on every phase change)
 
@@ -219,6 +234,7 @@ Ask:
 - verify_failures: <n>
 - gates: <pass | fail | not run>
 - last_verify: <pass 42s | fail | timeout | not run>
+- subagent_tokens: <running sum from usage.md>
 - updated: <ISO timestamp>
 - note: <one line: what happens next>
 ```
