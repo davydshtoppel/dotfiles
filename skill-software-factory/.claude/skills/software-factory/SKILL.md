@@ -1,6 +1,6 @@
 ---
-name: factory
-description: Software factory. Drives a JIRA ticket or a free-text task through explore → plan → your approval → implement → verify → your approval → commit/PR, using the factory-explorer, factory-planner and factory-implementer subagents. Use when the user runs /factory.
+name: software-factory
+description: Software factory. Drives a JIRA ticket or a free-text task through explore → plan → your approval → implement → verify → your approval → commit/PR, using the software-factory-explorer, software-factory-planner and software-factory-implementer subagents. Use when the user runs /software-factory.
 argument-hint: <JIRA-KEY | task description> | resume [run-id]
 disable-model-invocation: true
 model: sonnet
@@ -13,9 +13,9 @@ You are the **orchestrator**. You do not explore the codebase, plan or write cod
 
 | Subagent | Model | Writes |
 |---|---|---|
-| `factory-explorer` | haiku | `digest.md` |
-| `factory-planner` | opus | `plan.md`, `plan-amendment-<N>.md` |
-| `factory-implementer` | sonnet | project code + tests, `impl-report.md` |
+| `software-factory-explorer` | haiku | `digest.md` |
+| `software-factory-planner` | opus | `plan.md`, `plan-amendment-<N>.md` |
+| `software-factory-implementer` | sonnet | project code + tests, `impl-report.md` |
 
 **Token rules:**
 - Pass subagents file paths, not file contents (for failures, the path of `verify.log`, not its tail).
@@ -31,7 +31,7 @@ You are the **orchestrator**. You do not explore the codebase, plan or write cod
 
 The user invoked this with: `$ARGUMENTS`
 
-- Empty → print usage and stop: `/factory <JIRA-KEY | task description>` or `/factory resume [run-id]`.
+- Empty → print usage and stop: `/software-factory <JIRA-KEY | task description>` or `/software-factory resume [run-id]`.
 - `resume` with no id → list `.factory/runs/*/state.md` (id, phase, updated) and stop.
 - `resume <id>` → read `.factory/runs/<id>/state.md` and continue at its `phase` (see Phases). Re-show the pending checkpoint if the phase is a checkpoint.
   - First compare `git --no-pager branch --show-current` with `branch` in `state.md` (when set). If they differ, ask: switch back / abort.
@@ -86,13 +86,13 @@ On a miss, run that subagent once more with the problem stated. If it still fail
 
 ## Phase 1 — Explore
 
-Spawn `factory-explorer`. In the prompt, pass `RUN_DIR=.factory/runs/<id>` and tell it to read the task from `$RUN_DIR/task.md` and write `$RUN_DIR/digest.md`.
+Spawn `software-factory-explorer`. In the prompt, pass `RUN_DIR=.factory/runs/<id>` and tell it to read the task from `$RUN_DIR/task.md` and write `$RUN_DIR/digest.md`.
 
 Validate `digest.md` (see Output validation), then set `phase: plan`.
 
 ## Phase 2 — Plan
 
-Spawn `factory-planner` with `mode: plan` and `RUN_DIR`. When it returns, read `plan.md`:
+Spawn `software-factory-planner` with `mode: plan` and `RUN_DIR`. When it returns, read `plan.md`:
 - Validate `plan.md` (see Output validation).
 - Copy its Verify command into `state.md` as `verify_cmd`, and its `Full:` command as `full_cmd`.
 - Set `phase: checkpoint-1`.
@@ -111,7 +111,7 @@ Show the user a compact summary built from `plan.md`, **not** the whole file:
 
 Then ask with AskUserQuestion:
 - **Approve:** continue to implementation with this verify command.
-- **Revise plan:** the user says what to change (via "Other" or a follow-up). Re-run `factory-planner` in `mode: plan` with the feedback appended to the prompt. User-requested revisions do not count against `amendments`. Return to Checkpoint 1.
+- **Revise plan:** the user says what to change (via "Other" or a follow-up). Re-run `software-factory-planner` in `mode: plan` with the feedback appended to the prompt. User-requested revisions do not count against `amendments`. Return to Checkpoint 1.
 - **Change verify command:** take the new command, update `state.md`, and ask again.
 - **Abort:** set `phase: aborted` and stop. Leave the run dir in place.
 
@@ -122,16 +122,16 @@ On approval:
 
 ## Phase 3 — Implement
 
-Spawn `factory-implementer` with task `implement` (or `resume` after an amendment) and `RUN_DIR`. Validate `impl-report.md` (see Output validation), then branch on its `Status`:
+Spawn `software-factory-implementer` with task `implement` (or `resume` after an amendment) and `RUN_DIR`. Validate `impl-report.md` (see Output validation), then branch on its `Status`:
 
 - **`DONE` / `FIX_DONE`** → run the gates (next section), then set `phase: verify`.
 - **`DEVIATION`:**
   - If `amendments` = 2, stop at a **deviation checkpoint**. Show the deviation and ask: **Re-plan from scratch** (move all `plan-amendment-*.md` to `.factory/runs/<id>/superseded/`, then back to Phase 2 with the deviation as feedback; reset `amendments` and `verify_failures` to 0) / **Give instructions** (planner `mode: revise` with the user's text, then implementer `resume`) / **Abort**.
   - Otherwise:
     1. Increment `amendments`.
-    2. Spawn `factory-planner` with `mode: amend`, `N` (see Loop caps), and `RUN_DIR`. It reads the deviation from `impl-report.md`.
+    2. Spawn `software-factory-planner` with `mode: amend`, `N` (see Loop caps), and `RUN_DIR`. It reads the deviation from `impl-report.md`.
     3. If the amendment says `Scope change: yes`, show the amendment to the user and ask **Approve amendment / Revise / Abort** before continuing.
-    4. Spawn `factory-implementer` with task `resume`.
+    4. Spawn `software-factory-implementer` with task `resume`.
 
 ## Gates (cheap deterministic checks, before verify)
 
@@ -141,7 +141,7 @@ Run these yourself with git and Grep; they cost no subagent tokens. Skip the tes
 2. **Tests present.** For every `file :: name` in the plan's test table (and amendments), Grep the file for the test name. A missing file or name is a miss.
 3. **No weakened tests.** `git --no-pager diff <base_branch> -- <test files>` must not remove test annotations/functions or assertions that the plan did not replace, and must not add skip markers (`@Disabled`, `@Ignore`, `.skip(`, `xit(`, `xdescribe(`, `@pytest.mark.skip`, `t.Skip(`).
 
-On a miss, count it like the 1st verify failure: increment `verify_failures` and spawn `factory-implementer` with task `fix` and the gate findings as the notes (for scope: revert the extra change or justify it under Adaptations). If a gate misses again after that, stop as for the 3rd verify failure. Record `gates: pass | fail` in `state.md`.
+On a miss, count it like the 1st verify failure: increment `verify_failures` and spawn `software-factory-implementer` with task `fix` and the gate findings as the notes (for scope: revert the extra change or justify it under Adaptations). If a gate misses again after that, stop as for the 3rd verify failure. Record `gates: pass | fail` in `state.md`.
 
 ## Phase 4 — Verify (you run it, never trust the implementer's self-check)
 
@@ -157,11 +157,11 @@ A tool timeout (no `exit=` line printed) counts as a failure; record `last_verif
 
 - **Pass** → record the duration and set `phase: checkpoint-2`. If the duration is over 180 s, note it, so that checkpoint 2 can suggest a narrower command for next time.
 - **Fail** → increment `verify_failures`, then:
-  - 1st failure → spawn `factory-implementer` with task `fix`, `RUN_DIR`, and the path `.factory/runs/<id>/verify.log`. Then go back to Phase 3's status handling, so that a DEVIATION during the fix is handled as a deviation.
+  - 1st failure → spawn `software-factory-implementer` with task `fix`, `RUN_DIR`, and the path `.factory/runs/<id>/verify.log`. Then go back to Phase 3's status handling, so that a DEVIATION during the fix is handled as a deviation.
   - 2nd failure → if `amendments` < 2:
     1. Increment `amendments`.
-    2. Spawn `factory-planner` with `mode: diagnose`, `N` (see Loop caps), and `RUN_DIR` (it reads `verify.log`).
-    3. Then spawn `factory-implementer` with task `resume`, and verify again.
+    2. Spawn `software-factory-planner` with `mode: diagnose`, `N` (see Loop caps), and `RUN_DIR` (it reads `verify.log`).
+    3. Then spawn `software-factory-implementer` with task `resume`, and verify again.
 
     If `amendments` is already 2, stop as for the 3rd failure.
   - 3rd failure → stop at a checkpoint. Show the tail and the log path, and ask: **Give instructions** (planner `mode: revise` with the user's text, then implementer `resume`, then verify again; reset `verify_failures` to 0) / **Accept unverified and go to checkpoint 2** / **Abort**.
@@ -179,8 +179,8 @@ Ask with AskUserQuestion:
 - **Commit, push and open PR**
 - **Commit only (local):** no push.
 - **Request changes:** the user describes them.
-  - Small and within the plan → spawn `factory-implementer` with task `fix` and the user's notes.
-  - Otherwise → spawn `factory-planner` with `mode: revise`, `N` (see Loop caps) and the notes, then the implementer with task `resume`. User-requested changes do not count against `amendments`.
+  - Small and within the plan → spawn `software-factory-implementer` with task `fix` and the user's notes.
+  - Otherwise → spawn `software-factory-planner` with `mode: revise`, `N` (see Loop caps) and the notes, then the implementer with task `resume`. User-requested changes do not count against `amendments`.
   - Reset `verify_failures` to 0, verify again, and return here.
 - **Abort:** leave the changes in the worktree on the branch, set `phase: aborted`, and stop.
 

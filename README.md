@@ -19,8 +19,8 @@ Personal configuration files for editor and shell environments.
 - **skill-explain-pull-request/.agents/skills/explain-pull-request/SKILL.md** - GitHub Copilot equivalent for PR analysis
 - **skill-create-junit-test/.claude/skills/create-junit-test/SKILL.md** - Claude Code `/create-junit-test` skill for JUnit 5 test generation
 - **skill-create-junit-test/.agents/skills/create-junit-test/SKILL.md** - GitHub Copilot equivalent for JUnit test generation
-- **skill-software-factory/.claude/skills/factory/SKILL.md** + **skill-software-factory/.claude/agents/factory-*.md** - Claude Code `/factory` software factory (explorer → planner → implementer with two approval checkpoints)
-- **skill-software-factory/.copilot/agents/factory*.agent.md** - GitHub Copilot equivalent (`factory` custom agent + subagents) for VS Code and Copilot CLI
+- **skill-software-factory/.claude/skills/software-factory/SKILL.md** + **skill-software-factory/.claude/agents/software-factory-*.md** - Claude Code `/software-factory` software factory (explorer → planner → implementer with two approval checkpoints)
+- **skill-software-factory/.copilot/agents/software-factory*.agent.md** - GitHub Copilot equivalent (`software-factory` custom agent + subagents) for VS Code and Copilot CLI
 
 ## Installation
 
@@ -65,9 +65,9 @@ This creates symbolic links for:
 - `skill-explain-pull-request/.agents/skills/explain-pull-request/SKILL.md` → `~/.agents/skills/explain-pull-request/SKILL.md`
 - `skill-create-junit-test/.claude/skills/create-junit-test/SKILL.md` → `~/.claude/skills/create-junit-test/SKILL.md`
 - `skill-create-junit-test/.agents/skills/create-junit-test/SKILL.md` → `~/.agents/skills/create-junit-test/SKILL.md`
-- `skill-software-factory/.claude/skills/factory/SKILL.md` → `~/.claude/skills/factory/SKILL.md`
-- `skill-software-factory/.claude/agents/factory-{explorer,planner,implementer}.md` → `~/.claude/agents/`
-- `skill-software-factory/.copilot/agents/factory{,-explorer,-planner,-implementer}.agent.md` → `~/.copilot/agents/`
+- `skill-software-factory/.claude/skills/software-factory/SKILL.md` → `~/.claude/skills/software-factory/SKILL.md`
+- `skill-software-factory/.claude/agents/software-factory-{explorer,planner,implementer}.md` → `~/.claude/agents/`
+- `skill-software-factory/.copilot/agents/software-factory{,-explorer,-planner,-implementer}.agent.md` → `~/.copilot/agents/`
 
 ### Apply Individual Packages
 
@@ -130,4 +130,4 @@ stow -t ~ -D vim          # Remove Vim configuration
 - **OMZ:** Add `[ -f ~/.omzrc ] && source ~/.omzrc` to `.zshrc` to activate
 - **ltree:** `ltree/.local/bin/ltree` is a small zsh script mimicking `tree -C` for machines without Homebrew's `tree` (used by `fzf`'s Alt-C preview via `FZF_ALT_C_OPTS`). Ensure `~/.local/bin` is on `PATH` in `.zshrc` (e.g. `export PATH="$HOME/.local/bin:$PATH"`) so it can be found
 - **VS Code:** macOS only. Stow with `--no-folding` so `~/Library/Application Support/Code/User/` stays a real directory (it holds machine-local state). If a real `settings.json` already exists there, move it away first (stow will not overwrite it). Avoid enabling Settings Sync for `settings.json` alongside stow
-- **skill-software-factory:** Entry point is `/factory <JIRA-KEY | task>` in Claude Code, or the `factory` agent in VS Code (agent picker) / Copilot CLI (`copilot --agent factory`, interactive only). Flow: explore (light model) → plan (strong) → **checkpoint 1** → baseline verify → implement (mid) → gates (scope, planned tests present, no weakened tests) → verify → **checkpoint 2** → commit/PR. The Claude Code orchestrator itself runs on Sonnet. Runs are stored in `<project>/.factory/runs/<id>/` (added to `.git/info/exclude`) and can be continued with `resume <id>`. No per-project config: the verify command, commit/branch conventions, and the JIRA/PR tools (project skills, MCP, `gh`/`glab`) are auto-detected each run. Keep `git push` behind an approval prompt (`"ask": ["Bash(git push *)"]` in `~/.claude/settings.json`; avoid `--allow-all` in Copilot CLI). Copilot `model:` lists start with the Copilot CLI ID (the CLI only tries the first entry and falls back to `auto` if it is unavailable), followed by VS Code display names (VS Code tries each in order). Adjust them to your subscription, or override per subagent in `~/.copilot/settings.json` via `subagents.agents.<name>.model`
+- **skill-software-factory:** Entry point is `/software-factory <JIRA-KEY | task>` in Claude Code, or the `software-factory` agent in VS Code (agent picker) / Copilot CLI (`copilot --agent software-factory`, interactive only). Flow: explore (light model) → plan (strong) → **checkpoint 1** → baseline verify → implement (mid) → gates (scope, planned tests present, no weakened tests) → verify → **checkpoint 2** → commit/PR. The Claude Code orchestrator itself runs on Sonnet. Runs are stored in `<project>/.factory/runs/<id>/` (added to `.git/info/exclude`) and can be continued with `resume <id>`. No per-project config: the verify command, commit/branch conventions, and the JIRA/PR tools (project skills, MCP, `gh`/`glab`) are auto-detected each run. Keep `git push` behind an approval prompt (`"ask": ["Bash(git push *)"]` in `~/.claude/settings.json`; avoid `--allow-all` in Copilot CLI). Copilot `model:` lists start with the Copilot CLI ID (the CLI only tries the first entry and falls back to `auto` if it is unavailable), followed by VS Code display names (VS Code tries each in order). Adjust them to your subscription, or override per subagent in `~/.copilot/settings.json` via `subagents.agents.<name>.model`

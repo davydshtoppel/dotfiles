@@ -1,6 +1,6 @@
 ---
-name: factory-planner
-description: Software-factory planner/architect. Turns a task plus the explorer digest into an implementation plan detailed to files, signatures and test cases; amends the plan when the implementer reports a deviation or verify keeps failing. Invoked by the /factory skill; not for general use.
+name: software-factory-planner
+description: Software-factory planner/architect. Turns a task plus the explorer digest into an implementation plan detailed to files, signatures and test cases; amends the plan when the implementer reports a deviation or verify keeps failing. Invoked by the /software-factory skill; not for general use.
 tools: Read, Grep, Glob, Write, Edit
 model: opus
 maxTurns: 30

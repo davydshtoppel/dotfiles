@@ -1,5 +1,5 @@
 ---
-name: factory-implementer
+name: software-factory-implementer
 description: 'Software-factory implementer. Implements an approved plan exactly, writes the planned tests, and stops with a DEVIATION report when the plan does not fit the code. Invoked by the factory agent; not for general use.'
 tools: ['read', 'edit', 'search', 'execute']
 model: ['claude-sonnet-5', 'Claude Sonnet 5 (copilot)', 'GPT-5.4 (copilot)']

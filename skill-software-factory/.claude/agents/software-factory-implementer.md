@@ -1,6 +1,6 @@
 ---
-name: factory-implementer
-description: Software-factory implementer. Implements an approved plan exactly, writes the planned tests, and stops with a DEVIATION report when the plan does not fit the code. Invoked by the /factory skill; not for general use.
+name: software-factory-implementer
+description: Software-factory implementer. Implements an approved plan exactly, writes the planned tests, and stops with a DEVIATION report when the plan does not fit the code. Invoked by the /software-factory skill; not for general use.
 tools: Read, Edit, Write, Grep, Glob, Bash
 model: sonnet
 maxTurns: 80

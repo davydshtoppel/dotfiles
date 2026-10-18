@@ -20,8 +20,8 @@ This is a personal dotfiles repository containing editor and shell configuration
 - **skill-create-junit-test/.agents/skills/create-junit-test/SKILL.md** - GitHub Copilot equivalent for JUnit test generation
 - **fzf/.fzfrc** - FZF key bindings, preview options, and shell integration (`source <(fzf --zsh)`)
 - **ltree/.local/bin/ltree** - Colorized `tree`-mimicking zsh script for the FZF Alt-C preview, for machines without Homebrew's `tree`
-- **skill-software-factory/.claude/skills/factory/SKILL.md** + **skill-software-factory/.claude/agents/factory-*.md** - Claude Code `/factory` software factory: orchestrator skill + explorer/planner/implementer subagents
-- **skill-software-factory/.copilot/agents/factory*.agent.md** - GitHub Copilot equivalent: `factory` orchestrator custom agent + the same three subagents
+- **skill-software-factory/.claude/skills/software-factory/SKILL.md** + **skill-software-factory/.claude/agents/software-factory-*.md** - Claude Code `/software-factory` software factory: orchestrator skill + explorer/planner/implementer subagents
+- **skill-software-factory/.copilot/agents/software-factory*.agent.md** - GitHub Copilot equivalent: `software-factory` orchestrator custom agent + the same three subagents
 
 ## Architecture & Key Relationships
 
@@ -135,10 +135,10 @@ Supported flags: `-C` (colorize output — directories bold blue, executables bo
 
 ### skill-software-factory Configuration
 A stack-agnostic "software factory" that takes a JIRA key or a free-text task and runs it through explore → plan → **checkpoint 1** → implement → verify → **checkpoint 2** → commit/PR.
-- **`.claude/skills/factory/SKILL.md`** - `/factory <JIRA-KEY | task> | resume [id]` orchestrator. It runs in the main thread (not forked) so it can spawn subagents and use AskUserQuestion. `disable-model-invocation: true`. Pinned to `model: sonnet`: routing needs no Opus.
-- **`.claude/agents/factory-explorer.md`** (haiku), **`factory-planner.md`** (opus), **`factory-implementer.md`** (sonnet) - the subagents.
-- **`.copilot/agents/factory.agent.md`** - Copilot orchestrator. Same flow; the `agents:` allowlist names the three subagents. `tools` is omitted on purpose so project JIRA/PR MCP tools and skills stay available.
-- **`.copilot/agents/factory-{explorer,planner,implementer}.agent.md`** - Copilot subagents (`user-invocable: false`). Their bodies are identical to the Claude agents; only the frontmatter differs (Copilot tool aliases, `model:` priority lists).
+- **`.claude/skills/software-factory/SKILL.md`** - `/software-factory <JIRA-KEY | task> | resume [id]` orchestrator. It runs in the main thread (not forked) so it can spawn subagents and use AskUserQuestion. `disable-model-invocation: true`. Pinned to `model: sonnet`: routing needs no Opus.
+- **`.claude/agents/software-factory-explorer.md`** (haiku), **`software-factory-planner.md`** (opus), **`software-factory-implementer.md`** (sonnet) - the subagents.
+- **`.copilot/agents/software-factory.agent.md`** - Copilot orchestrator. Same flow; the `agents:` allowlist names the three subagents. `tools` is omitted on purpose so project JIRA/PR MCP tools and skills stay available.
+- **`.copilot/agents/software-factory-{explorer,planner,implementer}.agent.md`** - Copilot subagents (`user-invocable: false`). Their bodies are identical to the Claude agents; only the frontmatter differs (Copilot tool aliases, `model:` priority lists).
 
 **Design constraints (keep them when editing):**
 - **Only the explorer reads the codebase broadly.** The planner opens only the files named in the digest. The orchestrator passes file paths, not file contents.
