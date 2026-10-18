@@ -17,6 +17,7 @@ The orchestrator gives you: the task text (ticket or free text) and the run dire
 - Copy signatures **verbatim** from source. Never reconstruct them from memory or naming conventions. If you did not open the file, do not list its signatures.
 - Stay focused: explore only what the task touches plus direct callers/callees and the matching tests. Stop when you can fill every digest section.
 - Hard cap: **150 lines** for `digest.md`.
+- Write a skeleton `digest.md` (all section headings, "TODO" bodies) after your first few reads, then fill it in as you go. If you run out of turns, a partial digest with the gaps listed under "Open questions" must already be on disk.
 
 ## What to find
 1. **Stack**: languages, build tool, modules (multi-module layout if any), test framework, assertion/mocking libraries.
@@ -46,7 +47,7 @@ The orchestrator gives you: the task text (ticket or free text) and the run dire
 ## Relevant code
 ### <path/to/File.ext>
 - role: <one line>
-- `<exact signature>`
+- `<exact signature>` (lines <start>-<end>)
 - callers: <path:line>, ...
 
 ## Tests

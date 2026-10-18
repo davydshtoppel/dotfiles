@@ -20,7 +20,7 @@ You are the **orchestrator**. You do not explore the codebase, plan or write cod
 Run each one as a **subagent**, by name. Pass `RUN_DIR` and the mode or task in the prompt.
 
 **Token rules:**
-- Pass subagents file paths, not file contents.
+- Pass subagents file paths, not file contents (for failures, the path of `verify.log`, not its tail).
 - Do not read `digest.md` yourself; read only `plan.md` (checkpoint 1), `impl-report.md`, and amendments.
 - Never re-run the explorer during a run.
 
@@ -42,6 +42,8 @@ The user's message is `INPUT`.
 - Empty → print usage and stop: `<JIRA-KEY | task description>` or `resume [run-id]`.
 - `resume` with no id → list `.factory/runs/*/state.md` (id, phase, updated) and stop.
 - `resume <id>` → read `.factory/runs/<id>/state.md` and continue at its `phase`. Re-show the pending checkpoint if the phase is a checkpoint.
+  - First compare `git --no-pager branch --show-current` with `branch` in `state.md` (when set). If they differ, ask: switch back / abort.
+  - Phase `implement` → implementer task `resume` if `impl-report.md` exists, else `implement`. Phase `verify` → run verify again. Phase `commit` → check `git --no-pager log -1` before committing again.
 - Otherwise → new run.
 
 ## Loop caps (whole run)
@@ -52,44 +54,64 @@ The user's message is `INPUT`.
   - 2nd failure → the planner diagnoses (counts as an amendment).
   - 3rd failure → stop.
 - When a cap is reached, stop at a checkpoint and let the user decide. Never loop past a cap.
+- User-requested work (revise plan, checkpoint 2 changes, "Give instructions") never counts against `amendments`; it resets `verify_failures` to 0.
+- Amendment numbering: `N` = the number of existing `plan-amendment-*.md` files in the run dir + 1. It is independent of the `amendments` counter, so a file is never overwritten.
+
+## Output validation
+
+After every subagent returns, check its file before using it: it exists, it is non-empty, `wc -l` is within the cap, and the required headings are present.
+
+| File | Cap (lines) | Must contain |
+|---|---|---|
+| `digest.md` | 150 | `## Git`, `## Verify` |
+| `plan.md` | 200 | `## Steps`, `## Verify`, `## Git` |
+| `plan-amendment-<N>.md` | 80 | `## Changes to the plan`, a `Scope change:` line |
+| `impl-report.md` | 60 | a `Status:` line |
+
+On a miss, run that subagent once more with the problem stated. If it still fails, stop and show the user the problem.
 
 ## Phase 0 — Intake
 
 1. **Repo check.** `git --no-pager rev-parse --show-toplevel` must succeed; otherwise stop and say the factory needs a git repo. Work from the repo root.
 2. **Clean worktree.** If `git --no-pager status --porcelain` shows changes, ask:
    - **Abort (recommended).**
-   - **Continue anyway:** the existing changes will be mixed into the diff.
+   - **Continue anyway:** record the changed paths as `preexisting_dirty` in `state.md`. The factory never stages or commits them.
 3. **Task source.**
-   - If `INPUT` matches `^[A-Z][A-Z0-9]+-[0-9]+$` (optionally followed by extra notes), it is a ticket key. Fetch the ticket with whatever this session provides: a skill or an MCP tool that reads JIRA issues (look for names containing `jira` or `atlassian`).
+   - If `INPUT` starts with a token matching `^[A-Z][A-Z0-9]+-[0-9]+$` (optionally followed by whitespace and extra notes), it is a candidate ticket key. Try to fetch the ticket with whatever this session provides: a skill or an MCP tool that reads JIRA issues (look for names containing `jira` or `atlassian`).
      - Collect summary, description, acceptance criteria, and linked subtasks or comments only if relevant.
-     - If no such tool exists or the fetch fails, ask the user to paste the ticket text.
+     - If no such tool exists or the fetch fails, ask whether it is a ticket (the user pastes the text) or free text (treat `INPUT` as the task).
    - Otherwise `INPUT` is the task text.
 4. **Run id.** Use the ticket key, or for free text a kebab-case slug of the first ~5 meaningful words plus `-MMDD`. If `.factory/runs/<id>` exists, ask: resume it, or start a new run as `<id>-2`.
 5. **Run dir.**
    - `mkdir -p .factory/runs/<id>`.
    - Ensure `.factory/` is in `$(git rev-parse --git-common-dir)/info/exclude`: append it only if missing. Never edit `.gitignore`.
    - Write `task.md` with the ticket or task text, verbatim.
-6. **State.** Write `state.md` (format below) with `phase: explore`.
+6. **Base branch.**
+   - Default branch: `git --no-pager symbolic-ref --short refs/remotes/origin/HEAD` without the `origin/` prefix, else `main` or `master`, whichever exists.
+   - If HEAD is detached, or the current branch differs from the default branch, ask which to base the work on: default branch (recommended) / current branch / abort.
+   - Record the choice as `base_branch`. If the local `base_branch` is behind its upstream (`git --no-pager rev-list --count <base_branch>..<base_branch>@{u}` > 0), warn the user; do not fetch without asking.
+7. **State.** Write `state.md` (format below) with `phase: explore`.
 
 ## Phase 1 — Explore
 
 Run the `factory-explorer` subagent. In the prompt, pass `RUN_DIR=.factory/runs/<id>` and tell it to read the task from `$RUN_DIR/task.md` and write `$RUN_DIR/digest.md`.
 
-Then set `phase: plan`.
+Validate `digest.md` (see Output validation), then set `phase: plan`.
 
 ## Phase 2 — Plan
 
 Run the `factory-planner` subagent with `mode: plan` and `RUN_DIR`. When it returns, read `plan.md`:
-- Copy its Verify command into `state.md` as `verify_cmd`.
+- Validate `plan.md` (see Output validation).
+- Copy its Verify command into `state.md` as `verify_cmd`, and its `Full:` command as `full_cmd`.
 - Set `phase: checkpoint-1`.
 
 ## Checkpoint 1 — Plan approval
 
 Show the user a compact summary built from `plan.md`, **not** the whole file:
-- title, type and size
+- title and type
 - goal
 - acceptance criteria
-- a table of changed files, each with a one-line change description
+- a table of steps, each with its file and a one-line change description
 - the number of test cases
 - risks and open questions
 - the **verify command**
@@ -102,20 +124,20 @@ Then ask:
 4. **Abort:** set `phase: aborted` and stop. Leave the run dir in place.
 
 On approval:
-1. Record `base_branch` from `git --no-pager branch --show-current`.
-2. Create the branch. Take the naming convention from the `## Git` section of the digest (`grep -A4 '^## Git' .factory/runs/<id>/digest.md`). Default to `<feature|fix|chore>/<id>-<short-slug>`, with the type from `plan.md`. Run `git switch -c <branch>`.
+1. Create the branch named in the `## Git` section of `plan.md`: `git switch -c <branch> <base_branch>`. Record `branch` in `state.md`.
+2. **Baseline verify** (skip if `verify_cmd` is `none`; record `baseline: not run`). Run `verify_cmd` as in Phase 4, but write `baseline.log` and leave the failure counters alone. If it fails, show the tail and ask: **Continue** (record `baseline: red`) / **Abort**. Otherwise record `baseline: green`. When the baseline is red, a Phase 4 failure whose error lines also appear in `baseline.log` is pre-existing: do not count it, and list it at checkpoint 2.
 3. Set `phase: implement`.
 
 ## Phase 3 — Implement
 
-Run the `factory-implementer` subagent with task `implement` (or `resume` after an amendment) and `RUN_DIR`. Read `impl-report.md` and branch on its `Status`:
+Run the `factory-implementer` subagent with task `implement` (or `resume` after an amendment) and `RUN_DIR`. Validate `impl-report.md` (see Output validation), then branch on its `Status`:
 
 - **`DONE` / `FIX_DONE`** → set `phase: verify`.
 - **`DEVIATION`:**
-  - If `amendments` = 2, stop at a **deviation checkpoint**. Show the deviation and ask: **Re-plan from scratch** (back to Phase 2 with the deviation as feedback, counters reset) / **Give instructions** (user text goes to the planner as an amendment) / **Abort**.
+  - If `amendments` = 2, stop at a **deviation checkpoint**. Show the deviation and ask: **Re-plan from scratch** (move all `plan-amendment-*.md` to `.factory/runs/<id>/superseded/`, then back to Phase 2 with the deviation as feedback; reset `amendments` and `verify_failures` to 0) / **Give instructions** (planner `mode: revise` with the user's text, then implementer `resume`) / **Abort**.
   - Otherwise:
     1. Increment `amendments`.
-    2. Run `factory-planner` with `mode: amend`, `N = amendments`, and `RUN_DIR`. It reads the deviation from `impl-report.md`.
+    2. Run `factory-planner` with `mode: amend`, `N` (see Loop caps), and `RUN_DIR`. It reads the deviation from `impl-report.md`.
     3. If the amendment says `Scope change: yes`, show the amendment to the user and ask **Approve amendment / Revise / Abort** before continuing.
     4. Run `factory-implementer` with task `resume`.
 
@@ -129,24 +151,26 @@ Otherwise run the command in the terminal, allowing up to 10 minutes. Use this f
 start=$(date +%s); ( <verify_cmd> ) > .factory/runs/<id>/verify.log 2>&1; rc=$?; echo "exit=$rc duration=$(( $(date +%s) - start ))s"; [ $rc -eq 0 ] || tail -n 80 .factory/runs/<id>/verify.log
 ```
 
+A tool timeout (no `exit=` line printed) counts as a failure; record `last_verify: timeout`.
+
 - **Pass** → record the duration and set `phase: checkpoint-2`. If the duration is over 180 s, note it, so that checkpoint 2 can suggest a narrower command for next time.
 - **Fail** → increment `verify_failures`, then:
-  - 1st failure → run `factory-implementer` with task `fix`, `RUN_DIR`, and the 80-line tail. Then go back to Phase 3's status handling, so that a DEVIATION during the fix is handled as a deviation.
+  - 1st failure → run `factory-implementer` with task `fix`, `RUN_DIR`, and the path `.factory/runs/<id>/verify.log`. Then go back to Phase 3's status handling, so that a DEVIATION during the fix is handled as a deviation.
   - 2nd failure → if `amendments` < 2:
     1. Increment `amendments`.
-    2. Run `factory-planner` with `mode: diagnose`, the tail, and `RUN_DIR`.
+    2. Run `factory-planner` with `mode: diagnose`, `N` (see Loop caps), and `RUN_DIR` (it reads `verify.log`).
     3. Then run `factory-implementer` with task `resume`, and verify again.
 
     If `amendments` is already 2, stop as for the 3rd failure.
-  - 3rd failure → stop at a checkpoint. Show the tail and the log path, and ask: **Give instructions** / **Accept unverified and go to checkpoint 2** / **Abort**.
+  - 3rd failure → stop at a checkpoint. Show the tail and the log path, and ask: **Give instructions** (planner `mode: revise` with the user's text, then implementer `resume`, then verify again; reset `verify_failures` to 0) / **Accept unverified and go to checkpoint 2** / **Abort**.
 
 ## Checkpoint 2 — Change approval
 
 Show:
-1. `git --no-pager status --short` and `git --no-pager diff --stat`, including untracked files from status.
-2. The verify result: pass with duration, `not run (none)`, or `accepted unverified`.
+1. `git --no-pager status --porcelain -uall` (leaving out `preexisting_dirty` paths) and `git --no-pager diff --stat`.
+2. The verify result: pass with duration, `not run (none)`, or `accepted unverified`. Also list pre-existing baseline failures, if any. If `full_cmd` differs from `verify_cmd`, say that only the narrow command ran; the user can ask for `full_cmd` under **Request changes**.
 3. The **Adaptations** from `impl-report.md`, and any amendments with their one-line causes.
-4. A draft commit message that follows the commit style from the plan or digest and includes the ticket key if there is one. The subject is ≤72 chars; the body gives what and why in 2-4 lines.
+4. A draft commit message: the subject from the plan's `## Git` section (≤72 chars, ticket key included if there is one); the body gives what and why in 2-4 lines.
 5. A hint that the user can inspect the full diff with `git diff` before deciding.
 
 Ask:
@@ -154,13 +178,13 @@ Ask:
 2. **Commit only (local):** no push.
 3. **Request changes:** the user describes them.
    - Small and within the plan → run `factory-implementer` with task `fix` and the user's notes.
-   - Otherwise → run `factory-planner` with `mode: amend` and the notes. User-requested changes do not count against `amendments`.
-   - Then verify again and return here.
+   - Otherwise → run `factory-planner` with `mode: revise`, `N` (see Loop caps) and the notes, then the implementer with task `resume`. User-requested changes do not count against `amendments`.
+   - Reset `verify_failures` to 0, verify again, and return here.
 4. **Abort:** leave the changes in the worktree on the branch, set `phase: aborted`, and stop.
 
 ## Phase 5 — Commit / PR
 
-1. Stage exactly the paths shown at checkpoint 2, by explicit path (`git add <paths>`, never `-A`), then commit with the approved message.
+1. Set `phase: commit`. Stage exactly the paths shown at checkpoint 2 (never `preexisting_dirty` paths), by explicit file path (`git add <paths>`, never `-A` or a directory), then commit with the approved message.
 2. Push and PR (only if chosen): run `git push -u origin <branch>`. Then open the PR against `base_branch` with the first available option:
    1. a skill or MCP tool in this session that creates pull requests for this host (e.g. a bitbucket or github skill or MCP);
    2. `gh pr create` if the remote is GitHub and `gh` is installed, or `glab mr create` if the remote is GitLab and `glab` is installed;
@@ -178,9 +202,12 @@ Ask:
 - base_branch: <name or ->
 - branch: <name or ->
 - verify_cmd: `<command>` | none
+- full_cmd: `<command>` | -
+- baseline: green | red | not run
+- preexisting_dirty: <paths or ->
 - amendments: <0-2>
 - verify_failures: <n>
-- last_verify: <pass 42s | fail | not run>
+- last_verify: <pass 42s | fail | timeout | not run>
 - updated: <ISO timestamp>
 - note: <one line: what happens next>
 ```

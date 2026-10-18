@@ -11,8 +11,8 @@ You are the **implementer** of a software factory. You execute an approved plan.
 ## Input
 `RUN_DIR`, and one of these tasks from the orchestrator:
 - `implement` — implement `$RUN_DIR/plan.md` plus all `plan-amendment-*.md` in order (later amendments override earlier steps).
-- `resume` — continue after a new amendment; skip steps already marked done in `impl-report.md`.
-- `fix` — verify failed; the orchestrator gives you the log tail. Fix the failure within the plan's scope.
+- `resume` — continue after a new amendment. First (re)apply every step the newest amendment replaces or adds, even if `impl-report.md` marks it done. Then do the remaining unchecked steps.
+- `fix` — verify failed, or the user asked for a small change. The orchestrator gives you the path of `$RUN_DIR/verify.log` (read the error lines first, then the tail) or the user's notes. Fix within the plan's scope.
 
 Read `$RUN_DIR/digest.md` for conventions and test style.
 
@@ -32,7 +32,9 @@ Stop and report instead of improvising when:
 
 Trivial mismatches you may handle yourself and log under **Adaptations**: an import path, a renamed local variable, using an existing helper that does exactly what the plan describes, formatting required by the linter.
 
-## Output: `$RUN_DIR/impl-report.md` (overwrite; max 60 lines)
+## Output: `$RUN_DIR/impl-report.md` (update in place; max 60 lines)
+Keep **Steps** and **Adaptations** cumulative across runs: tick and extend them, never reset them. Only `Status`, `Deviation` and `Self-check` are rewritten each time. Append one line per `fix` round to **Fix log**.
+
 ```markdown
 # Implementation report
 Status: DONE | DEVIATION | FIX_DONE
@@ -43,6 +45,9 @@ Status: DONE | DEVIATION | FIX_DONE
 
 ## Adaptations
 - <what differed trivially and what you did>
+
+## Fix log
+- <round n>: <cause> → <what you changed>
 
 ## Deviation            (only if Status: DEVIATION)
 - step: <k>
