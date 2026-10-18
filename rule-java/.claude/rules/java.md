@@ -1,44 +1,37 @@
 ---
-description: Java style: Sun Checkstyle naming/formatting, JSpecify nullability, JDK 21 idioms
+description: Java rules: pragmatic design, reuse, boundary validation, Checkstyle style, JSpecify, JDK 25 idioms
 paths:
   - "**/*.java"
 ---
 
-# Java Style Rules
+# Java Rules
 
-Apply these conventions when writing or refactoring Java code.
+Existing project conventions win. Don't reformat code you didn't touch.
 
-## Naming
-- Types (classes, interfaces, enums, records, annotations): `UpperCamelCase`
-- Methods and variables: `lowerCamelCase` — choose descriptive names that explain purpose
-- Constants (`static final`): `UPPER_SNAKE_CASE`
-- Packages: all lowercase, no underscores
+## Design
+- Solve the task at hand; no abstractions for requirements that aren't in it.
+- Idioms over GoF patterns: records, enums, sealed types, lambdas and framework features first. Use a pattern only with ≥2 real variants today. Name types after the domain, not the pattern.
+- Don't reinvent: before writing a helper, look for one in the project and its existing dependencies (JDK, Spring, Guava, Commons, …). Don't add a dependency for a one-liner.
+- Collaborators (services, repositories, clients) go behind interfaces as test seams; one implementation is fine.
+- Composition over inheritance; constructor injection; no static mutable state.
+- Allow duplication until the third occurrence; a wrong abstraction costs more.
 
-## Imports
-- Order: third-party packages, `javax.*` special imports, `java.*` standard packages, then static imports
-- Alphabetically within each group; separate groups with a blank line; no wildcard or star imports
+## Validation & Errors
+- Validate input once, where it enters the system (endpoint, consumer, loader). Inside, trust the contract and JSpecify: no defensive checks per method.
+- Never swallow exceptions; wrap with the cause attached. Don't log and rethrow. No exceptions for control flow.
+- `Optional` only as a return type.
 
-## Formatting
-- Opening brace on same line; always use braces for `if`/`for`/`while`/`do`
-- 4 spaces per indent level, never tabs
-- Max 100 characters per line; one statement per line
+## Style
+- Naming: `UpperCamelCase` types, `lowerCamelCase` members, `UPPER_SNAKE_CASE` constants, lowercase packages.
+- Imports: third-party, `javax.*`, `java.*`, static; alphabetical, groups separated by a blank line; no wildcard or `import module`.
+- Formatting: 4-space indent, 100-char lines, braces always, opening brace on the same line.
+- Package-private by default. `final` on classes (unless designed for extension), parameters and fields.
+- JSpecify: `@NullMarked` per package or class; mark nullable types `@Nullable`.
 
-## Visibility
-- For new classes, prefer package-private (`default` access) unless public access is required
-
-## Nullability (JSpecify)
-- Apply `@NullMarked` at package level (`package-info.java`) or class level; all unannotated reference types are then non-null by default
-- Annotate nullable fields and parameters explicitly with `@Nullable`
-
-## Final Keyword
-- Declare classes `final` unless explicitly designed for extension (abstract classes are exempt)
-- Declare method parameters `final`
-- Declare instance and static fields `final` where possible
-
-## JDK 21 Idioms
-- Prefer switch expressions (`case X -> value`) over switch statements
-- Use `var` when the type is obvious from the initializer (`var map = new HashMap<String, Integer>()`)
-- Use records for simple immutable data carriers
-- Use sealed classes/interfaces for closed type hierarchies
-- Use pattern matching (`if (obj instanceof Foo f)`) instead of cast-after-instanceof
-- Use text blocks for multi-line string literals
+## JDK 25 Idioms (final features only, no preview)
+- Records; sealed interfaces + records for closed hierarchies.
+- Switch expressions with type/record patterns and `when` guards. Leave out `default` on sealed switches so the compiler checks exhaustiveness.
+- `instanceof` bindings, `_` for unused variables, `var` when the type is obvious.
+- `List.of`/`Map.of`, `getFirst()`/`getLast()`/`reversed()`, `Stream.toList()`, text blocks, `formatted()`.
+- Statements before `super(…)` instead of static helper methods.
+- Virtual threads for blocking I/O; `ScopedValue` instead of `ThreadLocal`.

@@ -11,10 +11,8 @@ Personal configuration files for editor and shell environments.
 - **fzf/.fzfrc** - FZF key bindings, preview options, and shell integration
 - **ltree/.local/bin/ltree** - Colorized `tree`-mimicking script used by the FZF Alt-C preview (no Homebrew `tree` dependency)
 - **vscode/Library/Application Support/Code/User/settings.json** - VS Code user settings (macOS), including VSCodeVim config mirroring `.vimrc`
-- **rule-gof/.copilot/instructions/gof.instructions.md** - GitHub Copilot instruction for OOP design patterns
-- **rule-gof/.claude/rules/gof.md** - Claude Code rule for OOP design patterns
-- **rule-java/.copilot/instructions/java.instructions.md** - GitHub Copilot instruction for Java style conventions
-- **rule-java/.claude/rules/java.md** - Claude Code rule for Java style conventions
+- **rule-java/.copilot/instructions/java.instructions.md** - GitHub Copilot instruction for Java design and style
+- **rule-java/.claude/rules/java.md** - Claude Code rule for Java design and style
 - **rule-maven/.copilot/instructions/maven.instructions.md** - GitHub Copilot instruction for Maven build conventions
 - **rule-maven/.claude/rules/maven.md** - Claude Code rule for Maven build conventions
 - **skill-explain-diff/.claude/skills/explain-diff/SKILL.md** - Claude Code `/explain-diff` skill for analyzing changes between branches
@@ -48,7 +46,6 @@ Since this repository is typically cloned to a location other than the home dire
 ```bash
 cd /path/to/dotfiles
 stow -t ~ vim ideavim starship fzf omz ltree
-stow --no-folding -t ~ rule-gof rule-java rule-maven
 stow --no-folding -t ~ skill-explain-diff skill-explain-pull-request skill-create-junit-test
 stow --no-folding -t ~ skill-software-factory
 stow --no-folding -t ~ vscode   # macOS only
@@ -62,8 +59,6 @@ This creates symbolic links for:
 - `fzf/.fzfrc` → `~/.fzfrc`
 - `ltree/.local/bin/ltree` → `~/.local/bin/ltree`
 - `vscode/Library/Application Support/Code/User/settings.json` → `~/Library/Application Support/Code/User/settings.json`
-- `rule-gof/.copilot/instructions/gof.instructions.md` → `~/.copilot/instructions/gof.instructions.md`
-- `rule-gof/.claude/rules/gof.md` → `~/.claude/rules/gof.md`
 - `rule-java/.copilot/instructions/java.instructions.md` → `~/.copilot/instructions/java.instructions.md`
 - `rule-java/.claude/rules/java.md` → `~/.claude/rules/java.md`
 - `rule-maven/.copilot/instructions/maven.instructions.md` → `~/.copilot/instructions/maven.instructions.md`
@@ -90,8 +85,7 @@ stow -t ~ omz                          # Oh My Zsh configuration only
 stow -t ~ fzf                          # FZF configuration only
 stow -t ~ ltree                        # tree-mimicking script for FZF Alt-C preview
 stow --no-folding -t ~ vscode          # VS Code settings (macOS)
-stow --no-folding -t ~ rule-gof        # OOP design patterns rules (Copilot & Claude Code)
-stow --no-folding -t ~ rule-java       # Java style conventions rules (Copilot & Claude Code)
+stow --no-folding -t ~ rule-java       # Java design & style rules (Copilot & Claude Code)
 stow --no-folding -t ~ rule-maven      # Maven build conventions rules (Copilot & Claude Code)
 stow --no-folding -t ~ skill-explain-diff           # Branch diff analysis skill (Copilot & Claude Code)
 stow --no-folding -t ~ skill-explain-pull-request   # PR analysis skill (Copilot & Claude Code)
@@ -119,7 +113,7 @@ To remove all symlinks:
 
 ```bash
 stow -t ~ -D vim ideavim starship fzf omz ltree
-stow --no-folding -t ~ -D rule-gof rule-java rule-maven
+stow --no-folding -t ~ -D rule-java rule-maven
 stow --no-folding -t ~ -D skill-explain-diff skill-explain-pull-request skill-create-junit-test
 stow --no-folding -t ~ -D skill-software-factory
 stow --no-folding -t ~ -D vscode

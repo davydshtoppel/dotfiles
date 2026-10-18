@@ -10,8 +10,6 @@ This is a personal dotfiles repository containing editor and shell configuration
 - **starship/.config/starship.toml** - Starship shell prompt configuration
 - **omz/.omzrc** - Oh My Zsh plugin list and shell setup
 - **vscode/Library/Application Support/Code/User/settings.json** - VS Code user settings (macOS), including VSCodeVim config mirroring `.vimrc`
-- **rule-gof/.copilot/instructions/gof.instructions.md** - GitHub Copilot instruction for OOP design patterns
-- **rule-gof/.claude/rules/gof.md** - Claude Code rule for Gang of Four patterns and SOLID principles
 - **rule-java/.copilot/instructions/java.instructions.md** - GitHub Copilot instruction for Java style conventions
 - **rule-java/.claude/rules/java.md** - Claude Code rule for Java style conventions
 - **rule-maven/.copilot/instructions/maven.instructions.md** - GitHub Copilot instruction for Maven build conventions
@@ -52,21 +50,12 @@ The `.ideavimrc` sources `.vimrc` at the top (`source ~/.vimrc`), so they share 
 ### Starship Configuration
 Uses a custom Gruvbox Dark color palette with a multi-segment format. Each segment (os, username, directory, git, languages, docker/conda/pixi context, time) has specific styling and positioning. The configuration detects multiple programming languages and shows their versions.
 
-### rule-gof Configuration
-Contains design pattern guidance for code generation tools:
-- **`.copilot/instructions/gof.instructions.md`** - GitHub Copilot instruction file with Gang of Four patterns, SOLID principles, and OOP best practices. Applied to Python, Java, TypeScript, JavaScript, and C# files.
-- **`.claude/rules/gof.md`** - Claude Code rule file auto-loaded for the same file types. Provides the same design pattern guidance when working in Claude Code.
-
-Both files cover creational, structural, and behavioral patterns, with emphasis on composition over inheritance, loose coupling, and clean code practices.
-
-**Installation note:** When stowing rule-gof, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-gof`. This allows other rules to coexist in `~/.claude/rules/` and `~/.copilot/instructions/`.
-
 ### rule-java Configuration
-Contains Java style guidance for code generation tools:
-- **`.copilot/instructions/java.instructions.md`** - GitHub Copilot instruction file with Sun Checkstyle conventions, JSpecify nullability, and JDK 21 idioms. Applied to Java files.
+Contains Java design and style guidance for code generation tools (replaces the former `rule-gof`: the GoF catalog was dropped in favour of pragmatic design rules):
+- **`.copilot/instructions/java.instructions.md`** - GitHub Copilot instruction file with pragmatic design rules, boundary validation, Sun Checkstyle conventions, JSpecify nullability, and JDK 25 idioms. Applied to Java files.
 - **`.claude/rules/java.md`** - Claude Code rule file auto-loaded for Java files. Provides the same style guidance when working in Claude Code.
 
-Both files cover naming conventions, import ordering, nullability annotations, the `final` keyword, and JDK 21 idioms (switch expressions, `var`, records, sealed classes, pattern matching, text blocks).
+Both files cover design (idioms over patterns, reuse existing utilities, interfaces as test seams, rule of three), validation at entry points only, naming, import ordering, nullability annotations, the `final` keyword, and JDK 25 idioms (pattern-matching switch, records, sealed types, virtual threads, `ScopedValue`).
 
 **Installation note:** When stowing rule-java, use `--no-folding` to create file-level symlinks: `stow --no-folding -t ~ rule-java`. This allows other rules to coexist in `~/.claude/rules/` and `~/.copilot/instructions/`.
 
@@ -169,7 +158,7 @@ A stack-agnostic "software factory" that takes a JIRA key or a free-text task an
 - **Handoffs are size-capped files** in `<project>/.factory/runs/<id>/`: `task.md`, `digest.md` ≤150 lines, `plan.md` ≤200, `plan-amendment-N.md` ≤80, `impl-report.md` ≤60, `state.md`, and `verify.log`. `.factory/` is added to `.git/info/exclude`, never to `.gitignore`.
 - **No per-project config.** The explorer detects one verify command (from project docs → CI config → build files) plus the commit/branch conventions. You approve the verify command at checkpoint 1, and the orchestrator runs it itself; it never trusts the implementer's self-check. JIRA and PR tooling come from whatever the session has (project skills or MCP, else `gh`/`glab`, else a compare URL).
 - **Loops.** The implementer stops with a `DEVIATION` instead of improvising, and the planner answers with a delta amendment. `amendments` ≤2 per run, shared with verify escalations (1st failure → implementer fix, 2nd → planner diagnose, 3rd → stop). Caps hand control back to you.
-- **Planner design rules.** Idioms first. A design pattern needs a justification, the rejected simpler alternative, and ≥2 concrete variants or a real extension point. This deliberately does not use `rule-gof`.
+- **Planner design rules.** Idioms first. A design pattern needs a justification, the rejected simpler alternative, and ≥2 concrete variants or a real extension point. It keeps its own design rules, independent of `rule-java`.
 - **Not in the MVP yet:** plan-reviewer, code-reviewer, S/M/L triage, and a commit guard hook. Commit, push and PR rely on checkpoint 2 plus platform approval prompts.
 
 **Installation note:** `stow --no-folding -t ~ skill-software-factory`. `--no-folding` keeps `~/.claude/agents`, `~/.claude/skills` and `~/.copilot/agents` as real directories.
