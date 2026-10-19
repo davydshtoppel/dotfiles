@@ -49,7 +49,8 @@ The user's message is `INPUT`.
 
 ## Loop caps (whole run)
 
-- `amendments` ≤ 2. This covers planner amendments for deviations and verify diagnoses together.
+- `amendments` ≤ 2. This covers planner amendments for deviations and verify diagnoses together. **The count comes from disk, not from memory**: before every planner call in mode `amend` or `diagnose`, run `grep -lE '^# Amendment [0-9]+ \((amend|diagnose)\)' .software-factory/runs/<id>/plan-amendment-*.md 2>/dev/null | wc -l` (files in `superseded/` and `revise` amendments do not match). Use that number as `amendments`, and check the cap **before** spawning the planner.
+- **Repeat rule.** If a new DEVIATION names a step that an earlier amendment already replaced, or has the same cause as an earlier deviation, go straight to the deviation checkpoint even when under the cap. Two misses on the same step mean the plan's premise is wrong, and the user decides.
 - `verify_failures`:
   - 1st failure → the implementer fixes it.
   - 2nd failure → the planner diagnoses (counts as an amendment).
@@ -173,10 +174,10 @@ Run the `software-factory-implementer` subagent with task `implement` (or `resum
 
 - **`DONE` / `FIX_DONE`** → run the gates (next section), then set `phase: verify`.
 - **`DEVIATION`:**
-  - If `amendments` = 2, stop at a **deviation checkpoint**. Show the deviation and ask: **Re-plan from scratch** (move all `plan-amendment-*.md` to `.software-factory/runs/<id>/superseded/`, then back to Phase 2 with the deviation as feedback; reset `amendments` and `verify_failures` to 0) / **Give instructions** (planner `mode: revise` with the user's text, then implementer `resume`) / **Abort**.
+  - If `amendments` (from disk) = 2, or the repeat rule applies, stop at a **deviation checkpoint**. Show the deviation, the number of deviation rounds so far (`deviation` rows in `usage.md`) and ask: **Re-plan from scratch** (move all `plan-amendment-*.md` to `.software-factory/runs/<id>/superseded/`, then back to Phase 2 with the deviation as feedback; reset `amendments` and `verify_failures` to 0) / **Give instructions** (planner `mode: revise` with the user's text, then implementer `resume`) / **Abort**.
   - Otherwise:
-    1. Increment `amendments`.
-    2. Run `software-factory-planner` with `mode: amend`, `N` (see Loop caps), and `RUN_DIR`. It reads the deviation from `impl-report.md`.
+    1. Count `amendments` from disk (see Loop caps) and write `state.md`.
+    2. Run `software-factory-planner` with `mode: amend`, `N` (see Loop caps), and `RUN_DIR`. It reads all listed deviations from `impl-report.md`.
     3. If the amendment says `Scope change: yes`, show the amendment to the user and ask **Approve amendment / Revise / Abort** before continuing.
     4. Run `software-factory-implementer` with task `resume`.
 
@@ -207,8 +208,8 @@ A tool timeout (no `exit=` line printed) counts as a failure; record `last_verif
 - **Pass** → record the duration and set `phase: review` (Phase 4.5). If the duration is over 180 s, note it, so that checkpoint 2 can suggest a narrower command for next time.
 - **Fail** → increment `verify_failures`, then:
   - 1st failure → run `software-factory-implementer` with task `fix`, `RUN_DIR`, and the path `.software-factory/runs/<id>/verify.log`. Then go back to Phase 3's status handling, so that a DEVIATION during the fix is handled as a deviation.
-  - 2nd failure → if `amendments` < 2:
-    1. Increment `amendments`.
+  - 2nd failure → if `amendments` (from disk) < 2:
+    1. Count `amendments` from disk and write `state.md`.
     2. Run `software-factory-planner` with `mode: diagnose`, `N` (see Loop caps), and `RUN_DIR` (it reads `verify.log`).
     3. Then run `software-factory-implementer` with task `resume`, and verify again.
 
@@ -260,7 +261,7 @@ Ask:
    The PR title is the commit subject. The PR body gives the goal, the acceptance criteria as a checklist, the test cases added, the verify result, one line `Reviewed: <verdict>, <n> findings fixed`, and the ticket key or link.
 3. Set `phase: done`, report the branch, commit SHA and PR URL in 3-5 lines, then show the usage report.
 
-## `state.md` format (overwrite on every phase change)
+## `state.md` format (overwrite on every phase change and after every subagent return)
 
 ```markdown
 # Factory run <id>
