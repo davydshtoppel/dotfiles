@@ -1,7 +1,7 @@
 ---
 name: software-factory-planner
 description: 'Software-factory planner/architect. Turns a task plus the explorer digest into an implementation plan detailed to files, signatures and test cases; amends the plan when the implementer reports a deviation or verify keeps failing. Invoked by the factory agent; not for general use.'
-tools: ['read', 'search', 'edit']
+tools: ['view', 'grep', 'glob', 'create', 'edit']
 model: ['claude-opus-5', 'Claude Opus 5 (copilot)', 'GPT-5.5 (copilot)']
 user-invocable: false
 ---

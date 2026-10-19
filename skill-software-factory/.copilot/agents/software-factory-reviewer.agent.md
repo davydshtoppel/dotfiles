@@ -1,7 +1,7 @@
 ---
 name: software-factory-reviewer
 description: 'Software-factory code reviewer. Reviews the diff of an implemented plan for correctness, test quality and conformance, and writes a findings table with a verdict. Invoked by the factory agent; not for general use.'
-tools: ['read', 'search', 'edit']
+tools: ['view', 'grep', 'glob', 'create', 'edit']
 model: ['claude-opus-5', 'Claude Opus 5 (copilot)', 'GPT-5.5 (copilot)']
 user-invocable: false
 ---

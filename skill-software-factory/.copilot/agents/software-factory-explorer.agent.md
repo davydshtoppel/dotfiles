@@ -1,7 +1,7 @@
 ---
 name: software-factory-explorer
 description: 'Software-factory explorer. Maps the codebase for one task and writes a compact digest (relevant files, real signatures, idioms, conventions, verify command). Invoked by the factory agent; not for general use.'
-tools: ['read', 'search', 'execute', 'edit']
+tools: ['view', 'grep', 'glob', 'bash', 'create', 'edit']
 model: ['claude-haiku-4.5', 'Claude Haiku 4.5 (copilot)', 'GPT-5.4 mini (copilot)']
 user-invocable: false
 ---
