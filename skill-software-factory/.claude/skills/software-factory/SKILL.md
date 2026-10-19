@@ -241,11 +241,20 @@ Show:
 Ask with AskUserQuestion:
 - **Commit, push and open PR**
 - **Commit only (local):** no push.
-- **Request changes:** the user describes them.
-  - Small and inside the plan: implementer `fix` with the notes.
-  - Else: planner `revise` with next N and the notes, then implementer `resume`.
-  - Does not count against `amendments`. `verify_failures` = 0. Verify again, return here.
-- **Abort:** keep the changes in the worktree on the branch, `phase: aborted`, show the usage report, stop.
+- **Leave as is:** keep the changes uncommitted on `branch`. Set `phase: done`. Report branch, paths and run dir. Show the usage report. Stop.
+- **Abort (discard):** see **Discard**.
+
+Free text ("Other") is **Request changes**:
+- Small and inside the plan: implementer `fix` with the notes.
+- Else: planner `revise` with next N and the notes, then implementer `resume`.
+- Does not count against `amendments`. `verify_failures` = 0. Verify again, return here.
+
+**Discard.**
+1. Ask with AskUserQuestion: **Discard changes** / **Back**. Show the paths.
+2. Paths = checkpoint 2 status paths, not `preexisting_dirty`.
+3. Tracked: `git restore --source=HEAD --staged --worktree -- <paths>`. Untracked: `rm -- <paths>`. No `git clean`, no `reset --hard`, no directories.
+4. `git switch <base_branch>`, then `git branch -d <branch>`. On failure keep the branch and say so.
+5. Set `phase: aborted`. Keep the run dir. Show the usage report. Stop.
 
 ## Phase 5 — Commit / PR
 

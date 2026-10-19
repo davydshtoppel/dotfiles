@@ -134,7 +134,7 @@ Supported flags: `-C` (colorize output — directories bold blue, executables bo
 **Installation note:** `stow -t ~ ltree` — no `--no-folding` needed. Ensure `~/.local/bin` is on `PATH` (e.g. `export PATH="$HOME/.local/bin:$PATH"` in `.zshrc`) so `ltree` can be found.
 
 ### skill-software-factory Configuration
-A stack-agnostic "software factory" that takes a JIRA key or a free-text task and runs it through explore → plan → **checkpoint 1** → implement → verify → review → **checkpoint 2** → commit/PR.
+A stack-agnostic "software factory" that takes a JIRA key or a free-text task and runs it through explore → plan → **checkpoint 1** → implement → verify → review → **checkpoint 2** → commit/PR (or leave as is / abort-discard).
 - **`.claude/skills/software-factory/SKILL.md`** - `/software-factory <JIRA-KEY | task> | resume [id]` orchestrator. It runs in the main thread (not forked) so it can spawn subagents and use AskUserQuestion. `disable-model-invocation: true`. Pinned to `model: sonnet`: routing needs no Opus.
 - **`.claude/agents/software-factory-explorer.md`** (haiku), **`software-factory-planner.md`** (opus), **`software-factory-implementer.md`** (sonnet), **`software-factory-reviewer.md`** (opus) - the subagents.
 - **`.copilot/agents/software-factory.agent.md`** - Copilot orchestrator. Same flow; the `agents:` allowlist names the four subagents. `tools` is omitted on purpose so project JIRA/PR MCP tools and skills stay available.
@@ -153,6 +153,7 @@ A stack-agnostic "software factory" that takes a JIRA key or a free-text task an
 - **Style.** Pragmatic simplified technical English (STE) in all factory files and in user messages: one instruction per sentence, one word per concept, tables over prose, a procedure defined once and referred to by name. The Claude and Copilot bodies stay identical except for platform spots (frontmatter, subagent table "Role" column, checkpoints section, `INPUT`/`$ARGUMENTS`, SendMessage continuation, `?`/`n/a` in the ledger, timeout wording). Copilot subagent bodies are copied 1:1 from the Claude ones.
 - **Cost rules.** Explorer and planner have Edit and update their files in place (never rewrite). Plan/amendment caps are limits, not targets. The planner reads digest line ranges only, with ≤5 targeted Grep/Glob for digest gaps. Implementers redirect build output to a log and read only its tail.
 - **Planner design rules.** Idioms first. A design pattern needs a justification, the rejected simpler alternative, and ≥2 concrete variants or a real extension point. It keeps its own design rules, independent of `rule-java`.
+- **Checkpoint 2 exits.** Commit+push+PR / commit only / leave as is (uncommitted, `phase: done`) / abort (discard: restore tracked, remove untracked by explicit path, never `preexisting_dirty`, switch to base, `git branch -d`). Request changes is the free-text answer (4-option limit of AskUserQuestion).
 - **Backlog (reviewed, deliberately not built):** per-repo facts cache (`.software-factory/project.md`), size triage (S-tasks on a cheaper planner).
 - **Not in the MVP yet:** plan-reviewer (an Opus pass over `plan.md` before checkpoint 1), size triage, and a commit guard hook. Commit, push and PR rely on checkpoint 2 plus platform approval prompts.
 
