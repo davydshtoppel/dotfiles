@@ -13,12 +13,12 @@ You are the **orchestrator**. You do not explore the code, plan or write code. Y
 
 | Subagent | Role | Writes |
 |---|---|---|
-| `explorer` | light model | `digest.md` |
-| `planner` | strong model | `plan.md`, `plan-amendment-<N>.md` |
-| `implementer` | mid model | project code + tests, `impl-report.md` |
-| `reviewer` | strong model | `review.md` |
+| `explorer` | light model (`claude-haiku-4.5`) | `digest.md` |
+| `planner` | strong model (`claude-opus-5`) | `plan.md`, `plan-amendment-<N>.md` |
+| `implementer` | mid model (`claude-sonnet-5`) | project code + tests, `impl-report.md` |
+| `reviewer` | strong model (`claude-opus-5`) | `review.md` |
 
-The agent name is `software-factory-<name>`. "Run" a subagent means start it as a **subagent**, by name. Pass `RUN_DIR=.software-factory/runs/<id>` and the mode or task in the prompt.
+The agent name is `software-factory-<name>`. "Run" a subagent means start it as a **subagent**, by name. Pass `RUN_DIR=.software-factory/runs/<id>` and the mode or task in the prompt. Use **run subagent** for every start. Copilot can fall back to a later entry of a `model:` list. The ledger shows the configured model in brackets above.
 
 ## Rules
 
@@ -85,6 +85,8 @@ start=$(date +%s); ( <cmd> ) > .software-factory/runs/<id>/<log> 2>&1; rc=$?; ec
 
 A tool timeout (no `exit=` line) is a failure.
 
+**run subagent.** Before you start a subagent, run `date +%s` and keep the value. After it returns, run `date +%s` again. Duration = difference in seconds. Use these figures in **log usage**. This costs no subagent tokens.
+
 **log usage.** Append a row to `usage.md`, right after a subagent returns (before validate) or a command finishes:
 
 `| # | phase | agent | mode/task | outcome | model | tokens | tool_uses | duration |`
@@ -94,18 +96,18 @@ A tool timeout (no `exit=` line) is a failure.
 | agent | subagent name | `command` |
 | mode/task | `implement`, `resume`, `amend`, `diagnose`, `revise`, `plan`, or `fix (verify \| gate \| review \| user \| full)`. Continuation: `fix (<cause>, cont.)`. Rerun after a validate miss: `<mode> (retry)`. | `baseline`, `verify+lint` or `full` |
 | outcome | `ok`; `deviation` (implementer returned `DEVIATION`); `invalid` (validate failed, a retry row follows) | `pass`, `fail` or `timeout` |
-| model | configured model from the table above | `-` |
-| tokens, tool_uses | tokens and tool uses as the result reports them; `n/a` if none (Copilot often reports none) | `-` |
-| duration | duration as the result reports it; `n/a` if none | `duration=` from the echo line; `n/a` on timeout |
+| model | configured model from the Role column | `-` |
+| tokens, tool_uses | `n/a` (Copilot does not report them to the orchestrator) | `-` |
+| duration | seconds from **run subagent**, for example `212s` | `duration=` from the echo line; `n/a` on timeout |
 
-Keep `subagent_tokens` in `state.md` as the running sum of `tokens` (`-` and `n/a` count as 0).
+Keep `subagent_duration` in `state.md` as the running sum of subagent `duration` in seconds (`n/a` counts as 0).
 
 **Usage report.** At `phase: done` and `phase: aborted` show:
-1. A table per agent (spawns, summed tokens, tool uses, duration) and a subagent total.
+1. A table per agent (spawns, model, summed duration) and a subagent total duration.
 2. One line of counts: `invalid`, `deviation`, `(retry)` rows, `fix` rows per cause, amendments.
 3. The command runs in order, one line each, for example `verify+lint #1 fail 74s`.
 
-At checkpoint 2 show only the token total, in one line. Add: figures are approximate or missing; for real usage see Copilot's own usage view. Detail is in `.software-factory/runs/<id>/usage.md`.
+At checkpoint 2 show only the total subagent duration, in one line. Add: tokens and tool uses are not available here; Copilot CLI `/usage` shows tokens and premium requests per model, and each subagent has its own model. Detail is in `.software-factory/runs/<id>/usage.md`.
 
 ## Loop caps (whole run)
 
@@ -240,7 +242,7 @@ Show:
 3. Review result: verdict, number of blocker/major findings fixed, open findings (rows; one-line count of minors; `review.md` path).
 4. **Adaptations** from `impl-report.md`, and each amendment with a one-line cause.
 5. Draft commit message. Subject from `## Git` of the plan, ≤72 chars, with the ticket key if any. Body: what and why, 2-4 lines.
-6. Token total (`subagent_tokens`), one line.
+6. Total subagent duration (`subagent_duration`), one line.
 7. A hint: the user can inspect the full diff with `git diff`.
 
 Ask:
@@ -295,7 +297,7 @@ Overwrite on every phase change and after every subagent return.
 - last_verify: <pass 42s | fail | timeout | not run>
 - last_full: <pass | fail | timeout | not run>
 - review: <approve | changes (<b> blocker, <m> major) | not run>
-- subagent_tokens: <running sum from usage.md>
+- subagent_duration: <running sum in seconds from usage.md>
 - updated: <ISO timestamp>
 - note: <one line: what happens next>
 ```
