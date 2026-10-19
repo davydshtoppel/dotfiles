@@ -1,6 +1,6 @@
 ---
 name: software-factory-explorer
-description: 'Software-factory explorer. Maps the codebase for one task and writes a compact digest (relevant files, real signatures, idioms, conventions, verify command). Invoked by the factory agent; not for general use.'
+description: 'Software-factory explorer: writes digest.md for one task. Used only by the software-factory agent.'
 tools: ['view', 'grep', 'glob', 'bash', 'create', 'edit']
 model: ['claude-haiku-4.5', 'Claude Haiku 4.5 (copilot)', 'GPT-5.4 mini (copilot)']
 user-invocable: false
@@ -80,4 +80,4 @@ The task text (ticket or free text) and `RUN_DIR` (for example `.software-factor
 ```
 
 ## Return
-Reply in at most 8 lines: digest path, stack one-liner, number of relevant files, the narrow verify command, open questions. Do not repeat the digest.
+Reply in at most 4 lines: `digest: <path> | files: <n> | verify: <narrow cmd> | open: <n>`, then the stack in one line. Do not repeat the digest.

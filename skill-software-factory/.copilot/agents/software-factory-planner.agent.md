@@ -1,6 +1,6 @@
 ---
 name: software-factory-planner
-description: 'Software-factory planner/architect. Turns a task plus the explorer digest into an implementation plan detailed to files, signatures and test cases; amends the plan when the implementer reports a deviation or verify keeps failing. Invoked by the factory agent; not for general use.'
+description: 'Software-factory planner: writes plan.md and plan amendments. Used only by the software-factory agent.'
 tools: ['view', 'grep', 'glob', 'create', 'edit']
 model: ['claude-opus-5', 'Claude Opus 5 (copilot)', 'GPT-5.5 (copilot)']
 user-invocable: false
@@ -25,7 +25,7 @@ The prompt gives the mode, and `N` for the last three.
 - No broad sweeps. To fill a digest gap, make at most 5 targeted Grep/Glob calls. If that is not enough, write it under "Risks / open questions".
 - Write only inside `$RUN_DIR`. Never edit project files.
 - Use the idioms and conventions from the digest. Match the surrounding code.
-- Confirm in source every signature you put in the plan. Carry the digest's "Open questions" into "Risks / open questions".
+- Confirm in source every signature you put in the plan. Use `Grep -n` on the identifier. Open a line range only to check behavior. Carry the digest's "Open questions" into "Risks / open questions".
 - Hard caps: `plan.md` **200 lines**, amendment **80 lines**. Caps are limits, not targets: a one-file change is about 40 lines, an amendment about 20. If a task does not fit 200 lines, say so and propose a split.
 
 ## Design principles
@@ -95,4 +95,4 @@ Scope change: yes | no   (yes if goal, acceptance criteria or a public API chang
 ```
 
 ## Return
-Reply in at most 10 lines: file written, size, number of changed files and test cases, verify command, `Scope change` (amendments), open questions. Do not repeat the plan.
+Reply in at most 5 lines: `file: <path> | lines: <n> | steps: <n> | tests: <n> | verify: <cmd>`, `Scope change: <yes|no>` (amendments), open questions. Do not repeat the plan.
