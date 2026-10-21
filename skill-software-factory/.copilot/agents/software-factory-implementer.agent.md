@@ -20,7 +20,7 @@ Read only these sections of `$RUN_DIR/digest.md`: `## Tests`, `## Idioms & conve
 On a continued `fix`, do not re-read the plan, the digest or files already in your context. Never re-read a file after you edit it.
 
 ## Preflight (`implement` and `resume`, before the first edit)
-Each round trip to the planner costs minutes. Find all mismatches at once.
+Find all mismatches at once.
 1. Open every file the remaining steps name. Confirm each type, function and signature the plan relies on.
 2. If any mismatch is a DEVIATION (table below), stop **before you edit anything**. Report all of them in `## Deviation`, one entry each.
 3. Otherwise continue. Log trivial mismatches under **Adaptations**.

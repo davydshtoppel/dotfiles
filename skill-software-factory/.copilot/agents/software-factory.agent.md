@@ -25,7 +25,7 @@ The agent name is `software-factory-<name>`. "Run" a subagent means start it as 
 **Tokens**
 - Pass file paths, not contents. For failures pass the path of `verify.log`, not its tail.
 - Read only `plan.md` (checkpoint 1), `impl-report.md`, `review.md`, `recheck.md` and amendments. Never read `digest.md`, `review.diff` or `recheck.diff`.
-- Run the explorer in mode `explore` once. Mode `refresh` runs at most once per run, only on Re-plan from scratch. To check for a refresh, run `Grep -c '^## Corrections'` on `digest.md`. Never Read it.
+- Run the explorer in mode `explore` once. For `refresh` see **refresh digest**.
 
 **Git**
 - Every git command uses `git --no-pager`.
@@ -53,7 +53,7 @@ The user's message is `INPUT`.
 
 ## Procedures
 
-**validate `<file>`.** Run after every subagent. Check: file exists, is not empty, line count is within the cap, required text is present. Use the Read result if you Read the file anyway; else one `wc -l` and one `Grep -c` with the headings as alternation. Never Read a file only to validate it. On a miss, run the same subagent once more and state the problem. If it fails again, stop and show the user the problem.
+**validate `<file>`.** Run after every subagent. Check: file exists, is not empty, line count is within the cap, required text is present. Use the Read result if you Read the file anyway; else one `wc -l` and one `Grep -c` with the headings as alternation. On a miss, run the same subagent once more and state the problem. If it fails again, stop and show the user the problem.
 
 | File | Cap (lines) | Must contain |
 |---|---|---|
@@ -64,23 +64,23 @@ The user's message is `INPUT`.
 | `review.md` | 60 | a `Verdict:` line, `## Findings` |
 | `recheck.md` | 40 | a `Verdict:` line, `## Findings` |
 
-**count amendments.** Run `grep -lE '^# Amendment [0-9]+ \((amend|diagnose)\)' .software-factory/runs/<id>/plan-amendment-*.md 2>/dev/null | wc -l`. The result is `amendments`. Count from disk, never from memory. Files in `superseded/` and `revise` files do not match. Do this and check the cap **before** every planner run in mode `amend` or `diagnose`. Write the result to `counters` in `state.md`.
+**count amendments.** Run `grep -lE '^# Amendment [0-9]+ \((amend|diagnose)\)' .software-factory/runs/<id>/plan-amendment-*.md 2>/dev/null | wc -l`. The result is `amendments`. Count from disk, never from memory. Do this and check the cap **before** every planner run in mode `amend` or `diagnose`. Write the result to `counters` in `state.md`.
 
-**refresh digest.** The digest may be wrong at the root (the planner said "recommend re-plan", or a deviation repeats). Run it once per run, before a re-plan.
+**refresh digest.** Run it before a re-plan.
 1. Run `Grep -c '^## Corrections'` on `digest.md`. If the count is above 0, the refresh is done. Skip the rest.
 2. Run the explorer with `mode: refresh`. Pass `RUN_DIR`, the path of `impl-report.md` and the paths of the amendments in `superseded/`.
 3. Validate `digest.md`. It must also contain `## Corrections`.
 
 **next N.** `N` = number of existing `plan-amendment-*.md` files in the run dir + 1. A file is never overwritten.
 
-**snapshot.** Prints a git tree hash of the current worktree. It uses a temporary index file, so the real index and worktree stay unchanged. `<p>` = one `:(exclude)<path>` pathspec for each `preexisting_dirty` path:
+**snapshot.** Prints a git tree hash of the worktree. `<p>` = one `:(exclude)<path>` pathspec for each `preexisting_dirty` path:
 
 ```bash
 export GIT_INDEX_FILE=.software-factory/runs/<id>/snap.index
 git --no-pager read-tree HEAD && git --no-pager add -A -- . <p>... && git --no-pager write-tree
 ```
 
-`read-tree HEAD` first keeps excluded tracked paths at HEAD, so they never show in a diff. `.software-factory/` is in `info/exclude`, so it is not added. Untracked files are included.
+The temporary index leaves the real index unchanged. `read-tree HEAD` keeps excluded paths at HEAD. Untracked files are included.
 
 **run-logged `<cmd>` `<log>`.** Run in the terminal, allow up to 10 minutes. Only a short tail enters the context:
 
@@ -90,7 +90,7 @@ start=$(date +%s); ( <cmd> ) > .software-factory/runs/<id>/<log> 2>&1; rc=$?; ec
 
 A tool timeout (no `exit=` line) is a failure.
 
-**run subagent.** Mandatory for every start and retry. Before you start the subagent, run `date +%s` and keep the value. After it returns, run `date +%s` again. Duration = difference in seconds. Use it in **log usage**. Never skip this step. Write `n/a` only if the start value is lost (for example after `resume` in a new session). This costs no subagent tokens.
+**run subagent.** Run `date +%s` before and after every start and retry. Duration = difference in seconds. Use it in **log usage**. Write `n/a` only if the start value is lost (for example after `resume` in a new session).
 
 **log usage.** Append a row to `usage.md`, right after **run subagent** ends (before validate) or a command finishes:
 
@@ -118,7 +118,6 @@ At checkpoint 2 show only the total subagent duration, in one line. Add: tokens 
 | explorer `refresh` | 1 | `## Corrections` in `digest.md` (count from disk) | never |
 
 - At a cap, stop at a checkpoint. The user decides. Never loop past a cap.
-- The recheck (Phase 4.6) runs at most once per run. It never starts a fix. Open findings go to checkpoint 2.
 - User-requested work (revise plan, checkpoint 2 changes, "Give instructions") and review fixes never count against `amendments`.
 - **Repeat rule.** A new DEVIATION on a step an earlier amendment already replaced, or with the same cause as an earlier deviation, goes straight to the deviation checkpoint, even under the cap. The plan's premise is wrong; the user decides.
 
@@ -131,7 +130,7 @@ At checkpoint 2 show only the total subagent duration, in one line. Add: tokens 
 | Gate miss or verify failure 3 | Stop. Show the tail and the log path. Ask: **Give instructions** (planner `revise` with the user's text, implementer `resume`, verify again, `verify_failures` = 0) / **Accept unverified and go to checkpoint 2** / **Abort**. |
 | DEVIATION, `amendments` < 2, no repeat | Count amendments. Run planner `amend` with next N (it reads all deviations in `impl-report.md`). If the amendment says `Scope change: yes`, show it and ask **Approve amendment / Revise / Abort**. Run implementer `resume`. |
 | DEVIATION, `amendments` = 2 or repeat rule | Deviation checkpoint. Show the deviation and the number of deviation rounds (`deviation` rows in `usage.md`). Ask: **Re-plan from scratch** (move all `plan-amendment-*.md` to `.software-factory/runs/<id>/superseded/`, set `phase: refresh`, run **refresh digest**, go to Phase 2 with the deviation as feedback, `amendments` = 0, `verify_failures` = 0) / **Give instructions** (planner `revise` with the user's text, then implementer `resume`) / **Abort**. |
-| Review `CHANGES` | `review_rounds`++. Run (or continue) implementer `fix` with the `review.md` path. Then gates, then Phase 4. A DEVIATION is handled as above. Then run the recheck (Phase 4.6). It never starts a second fix. |
+| Review `CHANGES` | `review_rounds`++. Run (or continue) implementer `fix` with the `review.md` path. Then gates, then Phase 4. A DEVIATION is handled as above. Then run the recheck (Phase 4.6). |
 | Full suite fail | See Phase 5, step 0. |
 
 ## Phase 0 — Intake
@@ -166,10 +165,10 @@ Run the planner with `mode: plan`. Then read `plan.md` and:
 3. Copy its Verify command to `verify_cmd`, `Full:` to `full_cmd`, `Lint:` to `lint_cmd` in `state.md`.
 4. Set `phase: checkpoint-1`.
 
-**Plan gate.** Cheap checks with file search. They catch a wrong digest before the implementer pays for it.
+**Plan gate.** Cheap checks with file search.
 1. **Paths.** Every `modify` or `delete` step names an existing file. Every `new` step names a path that does not exist.
 2. **AC coverage.** Every acceptance criterion number is in the `AC` column of the test table.
-3. **Signatures (warning only).** For each `modify` step, the identifier of the signature (name before `(`, or the type name) occurs in the file. A rename can be legitimate.
+3. **Signatures (warning only).** For each `modify` step, the identifier of the signature (name before `(`, or the type name) occurs in the file.
 
 On a miss in 1 or 2, run the planner once more (`mode: plan`) and state the misses. Misses that remain, and all warnings, go to checkpoint 1 under risks. After an amendment, run the gate on the amended steps only, and check only that `modify`/`delete` paths exist (earlier steps may have created the `new` ones).
 
@@ -205,7 +204,7 @@ Run the implementer with task `implement` (or `resume` after an amendment). Vali
 
 ## Gates (before verify)
 
-Run with git and search. They cost no subagent tokens. Skip the test gates for steps without test cases.
+Run with git and search. Skip the test gates for steps without test cases.
 1. **Scope.** Every path in `git --no-pager status --porcelain -uall` (not `preexisting_dirty`) must be named in the `plan.md` steps or amendments, or be a test file named in the test cases. Anything else is out of scope.
 2. **Tests present.** For every `file :: name` in the test table (and amendments), Search the file for the test name. A missing file or name is a miss.
 3. **No weakened tests.** `git --no-pager diff -U0 <base_branch> -- <test files>` must not remove test annotations, test functions or assertions the plan did not replace. It must not add skip markers: `@Disabled`, `@Ignore`, `.skip(`, `xit(`, `xdescribe(`, `@pytest.mark.skip`, `t.Skip(`.
@@ -218,7 +217,7 @@ You run it. Never trust the implementer's self-check.
 
 If `verify_cmd` is `none` and `lint_cmd` is `-`: record `verify: not run (no build/test setup)`, go to Phase 4.5.
 
-Else run-logged `( <verify_cmd> ) && ( <lint_cmd> )` into `verify.log`. Leave out a part that is `none` or `-`. Log usage as `verify+lint`. A lint failure is a verify failure. A timeout is a failure; record `last_verify: timeout`.
+Else run-logged `( <verify_cmd> ) && ( <lint_cmd> )` into `verify.log`. Leave out a part that is `none` or `-`. Log usage as `verify+lint`. A lint failure is a verify failure. On a timeout record `last_verify: timeout`.
 
 - Pass: record the duration, set `phase: review`. If it took over 180 s, note it, so checkpoint 2 can suggest a narrower command.
 - Fail: `verify_failures`++, route by the failure table.
@@ -236,7 +235,7 @@ The full review runs once per run. If `review:` in `state.md` is not `not run`, 
 
 ## Phase 4.6 — Recheck
 
-Runs once, after a review fix passed the gates and verify. It checks the fix only.
+Runs once, after a review fix passed the gates and verify.
 
 1. Set `phase: recheck`. Run **snapshot** to get the new tree. Write the fix diff without reading it:
    `git --no-pager diff <review_tree> <new_tree> > .software-factory/runs/<id>/recheck.diff`
