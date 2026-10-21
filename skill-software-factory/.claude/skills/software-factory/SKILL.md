@@ -22,6 +22,12 @@ The agent name is `software-factory-<name>`. "Run" a subagent means start it wit
 
 ## Rules
 
+**Delegation**
+- You never do the work of a subagent. Not for a small task, not after a failure, not to save time.
+- You never read project source files. You never edit or create files outside `.software-factory/`.
+- If a subagent start fails, run it once more. If it fails again, stop and ask: **Retry / Abort**. Never continue in your own thread.
+- If you are about to read code, write a plan or edit code, stop. Start the matching subagent.
+
 **Tokens**
 - Pass file paths, not contents. For failures pass the path of `verify.log`, not its tail.
 - Read only `plan.md` (checkpoint 1), `impl-report.md`, `review.md`, `recheck.md` and amendments. Never read `digest.md`, `review.diff` or `recheck.diff`.
@@ -48,7 +54,7 @@ The user invoked this with: `$ARGUMENTS`
 
 ## Procedures
 
-**validate `<file>`.** Run after every subagent. Check: file exists, is not empty, line count is within the cap, required text is present. Use the Read result if you Read the file anyway; else one `wc -l` and one `Grep -c` with the headings as alternation. On a miss, run the same subagent once more and state the problem. If it fails again, stop and show the user the problem.
+**validate `<file>`.** Run after every subagent. Check: file exists, is not empty, line count is within the cap, required text is present. Use the Read result if you Read the file anyway; else one `wc -l` and one `Grep -c` with the headings as alternation. On a miss, run the same subagent once more and state the problem. If it fails again, stop and show the user the problem. Before you check the file, check that `usage.md` has a row of this subagent for this run. A file without a row means you wrote it. Stop and tell the user.
 
 | File | Cap (lines) | Must contain |
 |---|---|---|
@@ -130,6 +136,7 @@ At checkpoint 2 show only the token total, in one line. Add: tokens are approxim
 
 ## Phase 0 — Intake
 
+0. **Preflight.** Check that the Agent tool exists in this session. If not, stop before you write any file. Do not continue.
 1. **Repo.** `git --no-pager rev-parse --show-toplevel` must succeed. If not, stop: the factory needs a git repo. Work from the repo root.
 2. **Clean worktree.** If `git --no-pager status --porcelain` shows changes, ask with AskUserQuestion: **Abort (Recommended)** / **Continue anyway**. On continue, record the paths as `preexisting_dirty` in `state.md`. Never stage or commit them.
 3. **Task source.**
