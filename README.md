@@ -19,9 +19,9 @@ Personal configuration files for editor and shell environments.
 - **skill-explain-pull-request/.agents/skills/explain-pull-request/SKILL.md** - GitHub Copilot equivalent for PR analysis
 - **skill-create-junit-test/.claude/skills/create-junit-test/SKILL.md** - Claude Code `/create-junit-test` skill for JUnit 5 test generation
 - **skill-create-junit-test/.agents/skills/create-junit-test/SKILL.md** - GitHub Copilot equivalent for JUnit test generation
-- **skill-software-factory/.claude/skills/software-factory/SKILL.md** + **skill-software-factory/.claude/agents/software-factory-*.md** - Claude Code `/software-factory` software factory (explorer → planner → implementer → reviewer with two approval checkpoints)
-- **skill-software-factory/.copilot/agents/software-factory*.agent.md** - GitHub Copilot equivalent (`software-factory` custom agent + subagents) for VS Code and Copilot CLI
-- **skill-software-factory/.local/bin/software-factory** - bash script (3.2 compatible) that does the factory's deterministic bookkeeping (state, usage ledger, validate, gates, verify runs, diffs, report); `tests/software-factory.test.sh` is its smoke test
+- **skill-atelier/.claude/skills/atelier/SKILL.md** + **skill-atelier/.claude/agents/atelier-*.md** - Claude Code `/atelier` atelier (explorer → planner → implementer → reviewer with two approval checkpoints)
+- **skill-atelier/.copilot/agents/atelier*.agent.md** - GitHub Copilot equivalent (`atelier` custom agent + subagents) for VS Code and Copilot CLI
+- **skill-atelier/.local/bin/atelier** - bash script (3.2 compatible) that does the atelier's deterministic bookkeeping (state, usage ledger, validate, gates, verify runs, diffs, report); `tests/atelier.test.sh` is its smoke test
 
 ## Installation
 
@@ -46,7 +46,7 @@ Since this repository is typically cloned to a location other than the home dire
 cd /path/to/dotfiles
 stow -t ~ vim ideavim starship fzf omz ltree
 stow --no-folding -t ~ skill-explain-diff skill-explain-pull-request skill-create-junit-test
-stow --no-folding -t ~ skill-software-factory
+stow --no-folding -t ~ skill-atelier
 stow --no-folding -t ~ vscode   # macOS only
 ```
 
@@ -66,10 +66,10 @@ This creates symbolic links for:
 - `skill-explain-pull-request/.agents/skills/explain-pull-request/SKILL.md` → `~/.agents/skills/explain-pull-request/SKILL.md`
 - `skill-create-junit-test/.claude/skills/create-junit-test/SKILL.md` → `~/.claude/skills/create-junit-test/SKILL.md`
 - `skill-create-junit-test/.agents/skills/create-junit-test/SKILL.md` → `~/.agents/skills/create-junit-test/SKILL.md`
-- `skill-software-factory/.claude/skills/software-factory/SKILL.md` → `~/.claude/skills/software-factory/SKILL.md`
-- `skill-software-factory/.claude/agents/software-factory-{explorer,planner,implementer,reviewer}.md` → `~/.claude/agents/`
-- `skill-software-factory/.copilot/agents/software-factory{,-explorer,-planner,-implementer,-reviewer}.agent.md` → `~/.copilot/agents/`
-- `skill-software-factory/.local/bin/software-factory` → `~/.local/bin/software-factory` (`tests/` is not linked, see `.stow-local-ignore`)
+- `skill-atelier/.claude/skills/atelier/SKILL.md` → `~/.claude/skills/atelier/SKILL.md`
+- `skill-atelier/.claude/agents/atelier-{explorer,planner,implementer,reviewer}.md` → `~/.claude/agents/`
+- `skill-atelier/.copilot/agents/atelier{,-explorer,-planner,-implementer,-reviewer}.agent.md` → `~/.copilot/agents/`
+- `skill-atelier/.local/bin/atelier` → `~/.local/bin/atelier` (`tests/` is not linked, see `.stow-local-ignore`)
 
 ### Apply Individual Packages
 
@@ -87,7 +87,7 @@ stow --no-folding -t ~ rule-java       # Java design & style rules (Copilot & Cl
 stow --no-folding -t ~ skill-explain-diff           # Branch diff analysis skill (Copilot & Claude Code)
 stow --no-folding -t ~ skill-explain-pull-request   # PR analysis skill (Copilot & Claude Code)
 stow --no-folding -t ~ skill-create-junit-test      # JUnit test generation skill (Copilot & Claude Code)
-stow --no-folding -t ~ skill-software-factory       # Software factory skill + subagents (Copilot & Claude Code)
+stow --no-folding -t ~ skill-atelier       # atelier skill + subagents (Copilot & Claude Code)
 ```
 
 ### Migrating Copilot skills to ~/.agents/skills
@@ -112,7 +112,7 @@ To remove all symlinks:
 stow -t ~ -D vim ideavim starship fzf omz ltree
 stow --no-folding -t ~ -D rule-java
 stow --no-folding -t ~ -D skill-explain-diff skill-explain-pull-request skill-create-junit-test
-stow --no-folding -t ~ -D skill-software-factory
+stow --no-folding -t ~ -D skill-atelier
 stow --no-folding -t ~ -D vscode
 ```
 
@@ -132,4 +132,4 @@ stow -t ~ -D vim          # Remove Vim configuration
 - **OMZ:** Add `[ -f ~/.omzrc ] && source ~/.omzrc` to `.zshrc` to activate
 - **ltree:** `ltree/.local/bin/ltree` is a small zsh script mimicking `tree -C` for machines without Homebrew's `tree` (used by `fzf`'s Alt-C preview via `FZF_ALT_C_OPTS`). Ensure `~/.local/bin` is on `PATH` in `.zshrc` (e.g. `export PATH="$HOME/.local/bin:$PATH"`) so it can be found
 - **VS Code:** macOS only. Stow with `--no-folding` so `~/Library/Application Support/Code/User/` stays a real directory (it holds machine-local state). If a real `settings.json` already exists there, move it away first (stow will not overwrite it). Avoid enabling Settings Sync for `settings.json` alongside stow
-- **skill-software-factory:** Entry point is `/software-factory <JIRA-KEY | task>` in Claude Code, or the `software-factory` agent in VS Code (agent picker) / Copilot CLI (`copilot --agent software-factory`, interactive only). Flow: explore (light model) → plan (strong, plus a cheap plan gate) → **checkpoint 1** → baseline verify → implement (mid) → gates (scope, planned tests present, no weakened tests) → verify (+ lint) → review (strong, diff only, once; after a review fix, one focused recheck of the fix diff) → **checkpoint 2** → full suite before push → commit/PR (or leave the changes as is, or abort and discard them). The Claude Code orchestrator itself runs on Sonnet. The orchestrator never does subagent work itself: a preflight stops the run if no subagent tool exists (VS Code needs the `agent` tool and `chat.customAgentInSubagent.enabled`), and a handoff file without a `usage.md` row is rejected. All deterministic bookkeeping (`state.md`/`usage.md` writes, handoff validation, plan gate, gates, verify/lint/full runs with a 570 s time limit, snapshot and review diffs, baseline comparison, usage report) is done by the `software-factory` script, so the orchestrator only routes on its exit codes; the preflight stops the run if the script is not on `PATH` (stow the package and add `~/.local/bin` to `PATH`). A usage ledger (`usage.md`: one row per subagent spawn and per verify/lint/full-suite run) is summarized at the end of a run: per-agent totals, retry/deviation/fix counts, command results. Tokens are approximate; on Copilot CLI only model and measured duration are logged (tokens via `/usage`). Runs are stored in `<project>/.software-factory/runs/<id>/` (added to `.git/info/exclude`) and can be continued with `resume <id>`. No per-project config: the verify command, commit/branch conventions, and the JIRA/PR tools (project skills, MCP, `gh`/`glab`) are auto-detected each run. Keep `git push` behind an approval prompt (`"ask": ["Bash(git push *)"]` in `~/.claude/settings.json`; avoid `--allow-all` in Copilot CLI). Copilot `model:` lists start with the Copilot CLI ID (the CLI only tries the first entry and falls back to `auto` if it is unavailable), followed by VS Code display names (VS Code tries each in order). Adjust them to your subscription, or override per subagent in `~/.copilot/settings.json` via `subagents.agents.<name>.model`
+- **skill-atelier:** Entry point is `/atelier <JIRA-KEY | task>` in Claude Code, or the `atelier` agent in VS Code (agent picker) / Copilot CLI (`copilot --agent atelier`, interactive only). Flow: explore (light model) → plan (strong, plus a cheap plan gate) → **checkpoint 1** → baseline verify → implement (mid) → gates (scope, planned tests present, no weakened tests) → verify (+ lint) → review (strong, diff only, once; after a review fix, one focused recheck of the fix diff) → **checkpoint 2** → full suite before push → commit/PR (or leave the changes as is, or abort and discard them). The Claude Code orchestrator itself runs on Sonnet. The orchestrator never does subagent work itself: a preflight stops the run if no subagent tool exists (VS Code needs the `agent` tool and `chat.customAgentInSubagent.enabled`), and a handoff file without a `usage.md` row is rejected. All deterministic bookkeeping (`state.md`/`usage.md` writes, handoff validation, plan gate, gates, verify/lint/full runs with a 570 s time limit, snapshot and review diffs, baseline comparison, usage report) is done by the `atelier` script, so the orchestrator only routes on its exit codes; the preflight stops the run if the script is not on `PATH` (stow the package and add `~/.local/bin` to `PATH`). A usage ledger (`usage.md`: one row per subagent spawn and per verify/lint/full-suite run) is summarized at the end of a run: per-agent totals, retry/deviation/fix counts, command results. Tokens are approximate; on Copilot CLI only model and measured duration are logged (tokens via `/usage`). Runs are stored in `<project>/.atelier/runs/<id>/` (added to `.git/info/exclude`) and can be continued with `resume <id>`. No per-project config: the verify command, commit/branch conventions, and the JIRA/PR tools (project skills, MCP, `gh`/`glab`) are auto-detected each run. Keep `git push` behind an approval prompt (`"ask": ["Bash(git push *)"]` in `~/.claude/settings.json`; avoid `--allow-all` in Copilot CLI). Copilot `model:` lists start with the Copilot CLI ID (the CLI only tries the first entry and falls back to `auto` if it is unavailable), followed by VS Code display names (VS Code tries each in order). Adjust them to your subscription, or override per subagent in `~/.copilot/settings.json` via `subagents.agents.<name>.model`

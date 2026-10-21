@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# software-factory - deterministic bookkeeping for the software-factory skill
-# (Claude Code) and the software-factory custom agent (GitHub Copilot).
+# atelier - deterministic bookkeeping for the atelier skill
+# (Claude Code) and the atelier custom agent (GitHub Copilot).
 # The orchestrator calls it and routes on the result. Exit codes decide gates.
 #
-# Usage: software-factory <subcommand> <run-id> [args]   (see `help`)
+# Usage: atelier <subcommand> <run-id> [args]   (see `help`)
 # Output: first line is key=value pairs; later lines are findings (max 20).
 # Exit:   0 pass, 1 miss or fail, 2 usage error, 124 timeout.
 # Needs bash 3.2 or newer (macOS /bin/bash works). Run it inside the git repo.
@@ -21,9 +21,9 @@ FAILED=0
 
 usage() {
   cat <<'EOF'
-Usage: software-factory <subcommand> <run-id> [args]
+Usage: atelier <subcommand> <run-id> [args]
 
-  init <id> <input>        create the run dir, usage.md, state.md; exclude .software-factory/
+  init <id> <input>        create the run dir, usage.md, state.md; exclude .atelier/
   state <id> k=v...        set state.md fields (counters accept +1); `state <id> get <key>`
   clock                    print epoch seconds
   log <id> <phase> <agent> <mode> <outcome> <model> <tokens> <tool_uses> <start>
@@ -39,7 +39,7 @@ Usage: software-factory <subcommand> <run-id> [args]
   recheck-diff <id>        write recheck.diff against review_tree
   report <id> [--short]    usage report
 
-Env: SOFTWARE_FACTORY_TIMEOUT  seconds for `run` (default 570)
+Env: ATELIER_TIMEOUT  seconds for `run` (default 570)
 EOF
 }
 
@@ -111,14 +111,14 @@ cmd_init() { # input...
   ex="$(git rev-parse --git-common-dir)/info/exclude"
   mkdir -p "$(dirname "$ex")"
   touch "$ex"
-  if ! grep -qxF '.software-factory/' "$ex"; then echo '.software-factory/' >> "$ex"; fi
+  if ! grep -qxF '.atelier/' "$ex"; then echo '.atelier/' >> "$ex"; fi
   {
     echo '| # | phase | agent | mode/task | outcome | model | tokens | tool_uses | duration |'
     echo '|---|---|---|---|---|---|---|---|---|'
   } > "$RD/usage.md"
   first=$(printf '%s\n' "$*" | sed -n '1p' | cut -c1-100)
   cat > "$RD/state.md" <<EOF
-# Factory run $id
+# Atelier run $id
 - input: $first
 - phase: explore
 - base_branch: -
@@ -208,7 +208,7 @@ cmd_run() { # mode
   esac
   if [ -z "$cmd" ]; then echo "result=skipped mode=$mode"; return 0; fi
   start=$(date +%s)
-  run_watched "${SOFTWARE_FACTORY_TIMEOUT:-570}" "$RD/$log" "$cmd" 2>/dev/null || rc=$?
+  run_watched "${ATELIER_TIMEOUT:-570}" "$RD/$log" "$cmd" 2>/dev/null || rc=$?
   dur="$(( $(date +%s) - start ))s"
   case "$rc" in 0) outcome=pass ;; 124) outcome=timeout ;; *) outcome=fail ;; esac
   append_row "$(state_get phase)" command "$mode" "$outcome" - - - "$dur"
@@ -565,7 +565,7 @@ id=${1:-}
 if [ -z "$id" ]; then die "missing run id (see help)"; fi
 shift
 case "$id" in */*|.*) die "bad run id: $id" ;; esac
-RD=".software-factory/runs/$id"
+RD=".atelier/runs/$id"
 
 if [ "$cmd" != init ] && [ ! -d "$RD" ]; then die "no run dir: $RD"; fi
 

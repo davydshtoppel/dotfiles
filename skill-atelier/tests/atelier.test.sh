@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Smoke test for .local/bin/software-factory. Run: bash tests/software-factory.test.sh
+# Smoke test for .local/bin/atelier. Run: bash tests/atelier.test.sh
 # Builds a throwaway git repo with a fake run and checks exit code + first line of each subcommand.
 
 set -uo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
-SF="$HERE/../.local/bin/software-factory"
+SF="$HERE/../.local/bin/atelier"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 cd "$TMP"
@@ -42,7 +42,7 @@ printf 'class FooTest {\n  @Test void whenX_thenY() { assertThat(1).isEqualTo(1)
 git add -A && git commit -q -m init
 
 ID=T-1
-RUN=.software-factory/runs/$ID
+RUN=.atelier/runs/$ID
 
 check "help" 0 '^Usage:' "$SF" help
 check "clock" 0 '^[0-9]+$' "$SF" clock
@@ -51,7 +51,7 @@ check "no run dir" 2 '^error:' "$SF" state nope get phase
 # init / state
 check "init" 0 '^result=ok' "$SF" init "$ID" "T-1 add baz"
 check "init twice" 1 '^result=exists' "$SF" init "$ID" "T-1 add baz"
-grep -qxF '.software-factory/' .git/info/exclude && pass=$((pass + 1)) || { fail=$((fail + 1)); echo "FAIL exclude"; }
+grep -qxF '.atelier/' .git/info/exclude && pass=$((pass + 1)) || { fail=$((fail + 1)); echo "FAIL exclude"; }
 check "state set" 0 '^$' "$SF" state "$ID" phase=plan base_branch=main 'verify_cmd=true' 'lint_cmd=-' 'note=a=b'
 check "state get" 0 '^plan$' "$SF" state "$ID" get phase
 check "state get cmd" 0 '^true$' "$SF" state "$ID" get verify_cmd
@@ -62,8 +62,8 @@ check "counters" 0 'amendments=0 verify_failures=1 review_rounds=0' "$SF" state 
 
 # log
 T0=$("$SF" clock)
-check "log" 0 '^row=1 duration=[0-9]+s$' "$SF" log "$ID" explore software-factory-explorer explore ok haiku 1200 7 "$T0"
-check "log n/a" 0 '^row=2 duration=\?$' "$SF" log "$ID" plan software-factory-planner plan ok opus n/a n/a -
+check "log" 0 '^row=1 duration=[0-9]+s$' "$SF" log "$ID" explore atelier-explorer explore ok haiku 1200 7 "$T0"
+check "log n/a" 0 '^row=2 duration=\?$' "$SF" log "$ID" plan atelier-planner plan ok opus n/a n/a -
 check "tokens summed" 0 '^1200$' "$SF" state "$ID" get subagent_tokens
 
 # fake plan
@@ -98,12 +98,12 @@ Add baz.
 ## Git
 - branch: `feat/T-1`
 EOF
-check "validate plan fails (no digest row)" 1 '^result=invalid' "$SF" validate "$ID" plan.md software-factory-writer
-check "validate plan" 0 '^result=ok file=plan.md' "$SF" validate "$ID" plan.md software-factory-planner
+check "validate plan fails (no digest row)" 1 '^result=invalid' "$SF" validate "$ID" plan.md atelier-writer
+check "validate plan" 0 '^result=ok file=plan.md' "$SF" validate "$ID" plan.md atelier-planner
 printf '# x\n' > $RUN/digest.md
-check "validate digest" 1 '^result=invalid' "$SF" validate "$ID" digest.md software-factory-planner
+check "validate digest" 1 '^result=invalid' "$SF" validate "$ID" digest.md atelier-planner
 has "validate digest heading" "lacks '## Git'"
-grep -qE '^\| 2 \| plan \| software-factory-planner \| plan \| invalid ' $RUN/usage.md && pass=$((pass + 1)) || { fail=$((fail + 1)); echo "FAIL validate did not mark the row invalid"; }
+grep -qE '^\| 2 \| plan \| atelier-planner \| plan \| invalid ' $RUN/usage.md && pass=$((pass + 1)) || { fail=$((fail + 1)); echo "FAIL validate did not mark the row invalid"; }
 
 # plan gate: AC 2 is covered; signature baz is missing in Foo.java (warning); Baz.java does not exist (ok)
 check "plan-gate" 0 '^result=ok misses=0 warnings=1' "$SF" plan-gate "$ID"
@@ -168,7 +168,7 @@ check "baseline state" 0 '^green$' "$SF" state "$ID" get baseline
 check "run verify fail" 1 '^result=fail exit=3' "$SF" run "$ID" verify+lint
 has "run verify tail" 'FAIL Tests run'
 "$SF" state "$ID" 'verify_cmd=sleep 10' > /dev/null
-check "run timeout" 124 '^result=timeout exit=124' env SOFTWARE_FACTORY_TIMEOUT=1 "$SF" run "$ID" verify+lint
+check "run timeout" 124 '^result=timeout exit=124' env ATELIER_TIMEOUT=1 "$SF" run "$ID" verify+lint
 check "last_verify state" 0 '^timeout$' "$SF" state "$ID" get last_verify
 "$SF" state "$ID" verify_cmd=none lint_cmd=- > /dev/null
 check "run skipped" 0 '^result=skipped' "$SF" run "$ID" verify+lint
