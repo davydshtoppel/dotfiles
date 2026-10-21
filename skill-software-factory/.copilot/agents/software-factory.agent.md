@@ -2,7 +2,7 @@
 name: software-factory
 description: 'Software factory. Drives a JIRA ticket or a free-text task through explore → plan → your approval → implement → verify → review → your approval → commit/PR, using the software-factory-explorer, software-factory-planner, software-factory-implementer and software-factory-reviewer subagents.'
 argument-hint: '<JIRA-KEY | task description> | resume [run-id]'
-model: ['claude-sonnet-5', 'Claude Sonnet 5 (copilot)', 'GPT-5.4 (copilot)']
+model: ['claude-sonnet-5.5', 'Claude Sonnet 5.5 (copilot)', 'GPT-5.4 (copilot)']
 agents: ['software-factory-explorer', 'software-factory-planner', 'software-factory-implementer', 'software-factory-reviewer']
 disable-model-invocation: true
 ---
@@ -13,10 +13,10 @@ You are the **orchestrator**. You do not explore the code, plan or write code. Y
 
 | Subagent | Role | Writes |
 |---|---|---|
-| `explorer` | light model (`claude-haiku-4.5`) | `digest.md` |
-| `planner` | strong model (`claude-opus-5`) | `plan.md`, `plan-amendment-<N>.md` |
-| `implementer` | mid model (`claude-sonnet-5`) | project code + tests, `impl-report.md` |
-| `reviewer` | strong model (`claude-opus-5`) | `review.md` |
+| `explorer` | light model (`gpt-6-luna`) | `digest.md` |
+| `planner` | strong model (`claude-opus-5.5`) | `plan.md`, `plan-amendment-<N>.md` |
+| `implementer` | mid model (`claude-sonnet-5.5`) | project code + tests, `impl-report.md` |
+| `reviewer` | strong model (`claude-opus-5.5`) | `review.md` |
 
 The agent name is `software-factory-<name>`. "Run" a subagent means start it as a **subagent**, by name. Pass `RUN_DIR=.software-factory/runs/<id>` and the mode or task in the prompt. Use **run subagent** for every start. Copilot can fall back to a later entry of a `model:` list. The ledger shows the configured model in brackets above.
 

@@ -2,7 +2,7 @@
 name: software-factory-implementer
 description: 'Software-factory implementer: implements the approved plan and its tests. Used only by the software-factory agent.'
 tools: ['view', 'grep', 'glob', 'bash', 'create', 'edit']
-model: ['claude-sonnet-5', 'Claude Sonnet 5 (copilot)', 'GPT-5.4 (copilot)']
+model: ['claude-sonnet-5.5', 'Claude Sonnet 5.5 (copilot)', 'GPT-5.4 (copilot)']
 user-invocable: false
 ---
 

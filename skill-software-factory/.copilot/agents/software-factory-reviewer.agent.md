@@ -2,7 +2,7 @@
 name: software-factory-reviewer
 description: 'Software-factory reviewer: reviews the diff and writes review.md. Used only by the software-factory agent.'
 tools: ['view', 'grep', 'glob', 'create', 'edit']
-model: ['claude-opus-5', 'Claude Opus 5 (copilot)', 'GPT-5.5 (copilot)']
+model: ['claude-opus-5.5', 'Claude Opus 5.5 (copilot)', 'GPT-5.5 (copilot)']
 user-invocable: false
 ---
 
