@@ -15,7 +15,7 @@ The prompt gives the mode, and `N` for the last three.
 
 | Mode | When | Output | Rule |
 |---|---|---|---|
-| `plan` | start, or user feedback on the plan | `$RUN_DIR/plan.md` from the task and `digest.md` | For feedback, change the existing `plan.md` with Edit. Rewrite only if most of it changes. |
+| `plan` | start, or user feedback on the plan | `$RUN_DIR/plan.md` from the task and `digest.md` | For feedback, change the existing `plan.md` with Edit. Rewrite only if most of it changes. With `replan: yes` (re-plan from scratch), rewrite `plan.md` from the corrected digest. Do not patch the old plan. |
 | `amend` | implementer stopped with DEVIATION (`impl-report.md`, maybe several entries) | `plan-amendment-<N>.md` | Resolve **every** deviation. Check the remaining steps for the same wrong assumption (counts toward the 5 Grep/Glob calls) and fix them in the same amendment. If the digest or the plan's premise is wrong at the root, set `Scope change: yes` and write "recommend re-plan" in Cause. Do not patch. |
 | `diagnose` | verify failed twice | `plan-amendment-<N>.md` | Read the errors in `$RUN_DIR/verify.log` first, then the tail. Give the diagnosis and exact fix instructions. |
 | `revise` | user asked for changes after implementation, or gave instructions at a cap | `plan-amendment-<N>.md` | Notes are in the prompt. No deviation. Write against the current plan and amendments. |
@@ -35,6 +35,7 @@ The prompt gives the mode, and `N` for the last three.
 - **A design pattern needs all three:** (1) one-line justification; (2) the simpler alternative you rejected, and why; (3) at least two concrete variants that exist now, or a real extension point the task requires. Otherwise use a plain function or class.
 - Reuse helpers named in the digest. Do not write new ones.
 - Every behavior change gets a test case. Follow the digest's test style.
+- Every file the change creates or edits is a step, also non-code files (test fixtures, resources, test data, config). A file in no step fails the scope gate.
 - Every acceptance criterion has at least one test case (`AC` column). For `Type: fix`, mark the regression test `(regression)`. It must reproduce the bug and fail before the fix.
 
 ## Output: `plan.md` (mode `plan`)

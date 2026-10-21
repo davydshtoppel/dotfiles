@@ -56,7 +56,7 @@ The user's message is `INPUT`.
 |---|---|
 | empty | Print `<task description>` or `resume [run-id]`. Stop. |
 | `resume` | List `.atelier/runs/*/state.md` (id, phase, updated). Stop. |
-| `resume <id>` | Read its `state.md`. Continue at `phase`: `explore` = Phase 1; `plan` = Phase 2; `checkpoint-1` and `checkpoint-2` = show it again; `done` and `aborted` = run `report <id>`, show it, stop; `refresh` = run **refresh digest** again, then Phase 2; `implement` = task `resume` if `impl-report.md` exists, else `implement`; `verify` = run verify again; `review` = run Phase 4.5 again; `recheck` = run Phase 4.6 (if `review_tree` is `-`, go to checkpoint 2). |
+| `resume <id>` | Read its `state.md`. Continue at `phase`: `explore` = Phase 1; `plan` = Phase 2; `checkpoint-1` and `checkpoint-2` = show it again; `done` and `aborted` = run `report <id>`, show it, stop; `refresh` = run **refresh digest** again, then Phase 2; `implement` = if `impl-report.md` has `Status: DONE` or `FIX_DONE`, the **implement loop** from step 2; else task `resume` if `impl-report.md` exists, else `implement`; `verify` = run verify again; `review` = run Phase 4.5 again; `recheck` = run Phase 4.6 (if `review_tree` is `-`, go to checkpoint 2). |
 | other | New run. |
 
 ## The script
@@ -66,6 +66,7 @@ The user's message is `INPUT`.
 | Subcommand | Use |
 |---|---|
 | `init <id> <input>` | Phase 0: run dir, `usage.md`, `state.md`, git exclude. |
+| `dirty <id>` | Phase 0: set `preexisting_dirty` from the worktree (one path per file). |
 | `state <id> key=value...` | Set fields of `state.md`. A counter accepts `+1`, for example `verify_failures=+1`. `state <id> get <key>` reads one field. |
 | `start <id> <agent>` | Store the start time of a subagent run. See **run subagent**. |
 | `log <id> <phase> <agent> <mode> <outcome> <model> <tokens> <tool_uses> -` | Append a subagent row. See **run subagent**. |
@@ -74,12 +75,12 @@ The user's message is `INPUT`.
 | `plan-gate <id> [--amendment N]` | Plan gate. Also sets `verify_cmd`, `full_cmd` and `lint_cmd` from `## Verify` in `plan.md`. |
 | `gates <id>` | Gates before verify. |
 | `changed <id>` | List the changed paths (not `preexisting_dirty`) as `head <path>` (in `HEAD`) or `new <path>`. |
-| `run <id> baseline \| verify+lint \| full` | Run the command approved at checkpoint 1 (from `state.md`), with a time limit of 570 s. It logs the command row and sets `baseline`, `last_verify` or `last_full`. Output: result line, and the tail of the log on failure. `skipped` = nothing to run. |
+| `run <id> baseline \| verify+lint \| full` | Run the command approved at checkpoint 1 (from `state.md`), with a time limit of 570 s (`full`: 3600 s). It logs the command row and sets `baseline`, `last_verify` or `last_full`. Output: result line, and the tail of the log on failure. `skipped` = nothing to run. |
 | `preexisting <id>` | Compare errors in `verify.log` with `baseline.log`. Exit 0 = all pre-existing. |
 | `review-diff <id>` / `recheck-diff <id>` | Write `review.diff` (and set `review_tree`) / `recheck.diff`. Never read them. |
 | `report <id> [--short]` | Usage report. |
 
-Allow up to 10 minutes for `run`.
+Allow up to 10 minutes for `run`. Start the full suite as `ATELIER_FULL_TIMEOUT=570 atelier run <id> full`.
 
 ## Procedures
 
@@ -92,7 +93,7 @@ Allow up to 10 minutes for `run`.
 
 **run subagent.** Do these steps for every start and retry:
 1. Run `start <id> atelier-<name>` before the start.
-2. Start the subagent.
+2. Start the subagent. Wait until it ends. Never start another subagent while one runs.
 3. Right after it ends, before validate: `log <id> <phase> <agent> <mode> <outcome> <model> <tokens> <tool_uses> -`.
    - `phase` = the phase in `state.md`. `agent` = `atelier-<name>`. A mode has no spaces. Quote every other argument that has one.
    - `mode` = `explore`, `refresh`, `implement`, `resume`, `amend`, `diagnose`, `revise`, `plan`, `review`, `recheck`, or `fix:<cause>` (`<cause>` = `verify`, `gate`, `review`, `user` or `full`). A rerun after a validate miss is `<mode>:retry`.
@@ -102,7 +103,7 @@ Allow up to 10 minutes for `run`.
 
 The script adds the duration and keeps `subagent_tokens` and `subagent_duration` in `state.md`.
 
-**implement loop.** Do it after every implementer run, for every cause (implement, resume, fix, amendment, review, user, full suite):
+**implement loop.** Set `phase=implement` before every implementer run (fix included). Do the steps after every implementer run, for every cause (implement, resume, fix, amendment, review, user, full suite):
 1. Validate `impl-report.md`.
 2. By `Status`: `DEVIATION` = route by the failure table. `DONE` or `FIX_DONE` = run the gates (see **Gates**). A gate miss counts once (`verify_failures=+1`); route by the failure table.
 3. Gates pass: set `phase=verify` and run Phase 4.
@@ -121,7 +122,7 @@ The script adds the duration and keeps `subagent_tokens` and `subagent_duration`
 - Count a verify failure once, where you find it: a gate miss (**implement loop**) or a Phase 4 failure that is not pre-existing. The failure table never counts. It routes by the counter value.
 - Change a counter only with `state` (`verify_failures=+1`, `verify_failures=0`, `review_rounds=+1`). `amendments` comes from `amendments <id>`, never from memory. Run it **before** every planner run in mode `amend` or `diagnose`, and check the cap.
 - At a cap, stop at a checkpoint. The user decides. Never loop past a cap.
-- User-requested work (revise plan, checkpoint 2 changes, "Give instructions") and review fixes never count against `amendments`.
+- User-requested work (revise plan, checkpoint 2 changes, "Give instructions") and review fixes never count against `amendments`. A DEVIATION during a review fix is a normal deviation: its `amend` counts.
 - **Repeat rule.** A new DEVIATION on a step an earlier amendment already replaced, or with the same cause as an earlier deviation, goes straight to the deviation checkpoint, even under the cap. The plan's premise is wrong; the user decides.
 
 ## Failure routing
@@ -134,7 +135,7 @@ The script adds the duration and keeps `subagent_tokens` and `subagent_duration`
 | `verify_failures` = 2 | If `amendments` < 2: run planner `diagnose` with next N and `verify.log`, run implementer `resume`, then the **implement loop**. Else treat as 3. |
 | `verify_failures` = 3 | Stop. Show the tail and the log path. Ask: **Give instructions** (planner `revise` with the user's text, implementer `resume`, `verify_failures` = 0, then the **implement loop**) / **Accept unverified and go to checkpoint 2** / **Abort**. |
 | DEVIATION, `amendments` < 2, no repeat | Run planner `amend` with next N (it reads all deviations in `impl-report.md`). If the amendment says `Scope change: yes`, show it and ask **Approve amendment / Revise / Abort**. Run `plan-gate <id> --amendment <N>`. Run implementer `resume`. Then the **implement loop**. |
-| DEVIATION, `amendments` = 2 or repeat rule | Deviation checkpoint. Show the deviation and the number of deviation rounds (`deviation=` in `report`). Ask: **Re-plan from scratch** (move all `plan-amendment-*.md` to `.atelier/runs/<id>/superseded/`, set `phase=refresh`, run **refresh digest**, move `impl-report.md` to `superseded/`, show `changed <id>` and ask **Discard partial changes** (**Discard** steps 1-2) / **Keep**, go to Phase 2 with the deviation as feedback, `amendments` = 0, `verify_failures` = 0) / **Give instructions** (planner `revise` with the user's text, then implementer `resume` and the **implement loop**) / **Abort**. |
+| DEVIATION, `amendments` = 2 or repeat rule | Deviation checkpoint. Show the deviation and the number of deviation rounds (`deviation=` in `report`). Ask: **Re-plan from scratch** (move all `plan-amendment-*.md` to `.atelier/runs/<id>/superseded/`, set `phase=refresh`, run **refresh digest**, move `impl-report.md` to `superseded/`, show `changed <id>` and ask **Discard partial changes** (**Discard** steps 1-2) / **Keep**, go to Phase 2 with `replan: yes` and the deviation as feedback, `amendments` = 0, `verify_failures` = 0) / **Give instructions** (planner `revise` with the user's text, then implementer `resume` and the **implement loop**) / **Abort**. |
 | Review `CHANGES` | `review_rounds`++. Run (or continue) implementer `fix` with the `review.md` path. Then the **implement loop**. Then run the recheck (Phase 4.6). |
 | Full suite fail | See Phase 5, step 0. |
 
@@ -142,10 +143,10 @@ The script adds the duration and keeps `subagent_tokens` and `subagent_duration`
 
 0. **Preflight.** Check that this session has a tool to start a named custom agent as a subagent. Run `atelier help`. If either is missing, stop before you write any file. For the subagent tool, tell the user: VS Code = enable the `agent` tool for this agent and the setting `chat.customAgentInSubagent.enabled`; IntelliJ = update the Copilot plugin; Copilot CLI = start with `/agent atelier`. For the script, tell the user: `stow --no-folding -t ~ skill-atelier` and put `~/.local/bin` on `PATH`. Do not continue.
 1. **Repo.** `git --no-pager rev-parse --show-toplevel` and `git --no-pager rev-parse --verify HEAD` must succeed. If not, stop before you write any file. Tell the user: the atelier needs a git repo with at least one commit, as the baseline for diffs and undo (`git init`, then a first commit). Work from the repo root.
-2. **Clean worktree.** If `git --no-pager status --porcelain` shows changes, ask: **Abort (Recommended)** / **Continue anyway**. On continue, keep the paths (comma-separated). After step 5, set them as `preexisting_dirty`. Never stage or commit them.
+2. **Clean worktree.** If `git --no-pager status --porcelain` shows changes, ask: **Abort (Recommended)** / **Continue anyway**. On continue, run `dirty <id>` after step 5. It records the paths as `preexisting_dirty`. Never stage or commit them.
 3. **Task.** `INPUT` is the task text.
 4. **Run id.** Kebab-case slug of the first ~5 meaningful words + `-MMDD`. If `.atelier/runs/<id>` exists, ask: resume it, or start a new run as `<id>-2`.
-5. **Run dir.** Run `init <id> "<first line of the task>"`. Write `task.md` (the task text, verbatim). Then set `preexisting_dirty` if you kept paths.
+5. **Run dir.** Run `init <id> "<first line of the task>"`. Write `task.md` (the task text, verbatim). Then run `dirty <id>` if the user chose **Continue anyway**.
 6. **State.** Set `phase=explore`.
 
 ## Phase 1 — Explore
@@ -172,7 +173,7 @@ Show a summary of `plan.md`, not the whole file:
 Ask:
 - **Approve:** continue with this verify command.
 - **Revise plan:** the user says what to change. Run Phase 2 again with the feedback in the planner prompt. The plan gate resets the commands from the plan: show them again. Return to checkpoint 1.
-- **Change verify command:** take the new verify and/or lint command, set them in `state.md`, ask again.
+- **Change verify command:** take the new verify, lint and/or full command, set them in `state.md`, ask again.
 - **Abort:** `phase=aborted`, show the usage report, stop. Keep the run dir.
 
 On approval:

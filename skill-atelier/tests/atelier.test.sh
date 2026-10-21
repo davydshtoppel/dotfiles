@@ -99,10 +99,14 @@ check "validate plan fails (no digest row)" 1 '^result=invalid' "$SF" validate "
 check "validate plan" 0 '^result=ok file=plan.md' "$SF" validate "$ID" plan.md atelier-planner
 check "validate plan again (no new row)" 1 '^result=invalid' "$SF" validate "$ID" plan.md atelier-planner
 has "validate again text" 'no new usage.md row'
+printf '# Amendment 1 (amend)\nScope change: no\n\n## Changes to the plan\n' > $RUN/plan-amendment-1.md
+check "validate other file, same row" 1 '^result=invalid file=plan-amendment-1.md lines=4' "$SF" validate "$ID" plan-amendment-1.md atelier-planner
+has "validate other file text" 'no new usage.md row'
+rm $RUN/plan-amendment-1.md
 printf '# x\n' > $RUN/digest.md
-check "validate digest" 1 '^result=invalid' "$SF" validate "$ID" digest.md atelier-planner
+check "validate digest" 1 '^result=invalid' "$SF" validate "$ID" digest.md atelier-explorer
 has "validate digest heading" "lacks '## Verify'"
-grep -qE '^\| 2 \| plan \| atelier-planner \| plan \| invalid ' $RUN/usage.md && pass=$((pass + 1)) || { fail=$((fail + 1)); echo "FAIL validate did not mark the row invalid"; }
+grep -qE '^\| 1 \| explore \| atelier-explorer \| explore \| invalid ' $RUN/usage.md && pass=$((pass + 1)) || { fail=$((fail + 1)); echo "FAIL validate did not mark the row invalid"; }
 
 # plan gate: AC 2 is covered; signature baz is missing in Foo.java (warning); Baz.java does not exist (ok)
 check "plan-gate" 0 '^result=ok misses=0 warnings=1' "$SF" plan-gate "$ID"
@@ -115,6 +119,14 @@ sed -i.bak 's/^| 2 | 2 |/| 2 | 1 |/' $RUN/plan.md
 check "plan-gate AC miss" 1 '^result=miss misses=1' "$SF" plan-gate "$ID"
 has "plan-gate AC text" 'AC 2 has no test case'
 sed -i.bak 's/^| 2 | 1 |/| 2 | 2 |/' $RUN/plan.md
+sed -i.bak 's/^`true`$/run the tests/' $RUN/plan.md
+check "plan-gate no verify cmd" 1 '^result=miss misses=1' "$SF" plan-gate "$ID"
+has "plan-gate verify text" 'no verify command'
+sed -i.bak 's/^run the tests$/`true`/' $RUN/plan.md
+"$SF" state "$ID" preexisting_dirty=src/ > /dev/null
+check "plan-gate dirty warn" 0 '^result=ok misses=0 warnings=3' "$SF" plan-gate "$ID"
+has "plan-gate dirty text" 'src/Foo.java is in preexisting_dirty'
+"$SF" state "$ID" preexisting_dirty=- > /dev/null
 rm -f $RUN/plan.md.bak
 
 # amendments
@@ -146,7 +158,27 @@ printf 'class FooTest {\n  @Test @Disabled void whenX_thenY() { }\n  @Test void 
 check "gates skip marker" 1 'weakened=[1-9]' "$SF" gates "$ID"
 printf 'class FooTest {\n  @Test void whenNull_thenThrow() { }\n}\n' > src/FooTest.java
 check "gates test missing" 1 'tests=1' "$SF" gates "$ID"
+printf 'class FooTest {\n  @Test void whenX_thenY() { assertThat(2).isEqualTo(2); }\n  @Test void whenNull_thenThrow() { }\n}\n' > src/FooTest.java
+check "gates changed assertion in planned test file" 0 '^result=pass' "$SF" gates "$ID"
+printf 'class Baz {}\n' > src/Baz.java
+printf 'class BazTest {\n  @Disabled @Test void x() { }\n}\n' > src/BazTest.java
+check "gates skip in new test file" 1 'scope=1 tests=0 weakened=1' "$SF" gates "$ID"
+has "gates new file text" 'skip marker in new file src/BazTest.java'
+rm src/BazTest.java
+mkdir -p src/__snapshots__ && printf 'snap\n' > src/__snapshots__/FooTest.snap
+check "gates snapshot allowed" 0 '^result=pass scope=0' "$SF" gates "$ID"
+rm -r src/__snapshots__ src/Baz.java
 printf 'class FooTest {\n  @Test void whenX_thenY() { assertThat(1).isEqualTo(1); }\n  @Test void whenNull_thenThrow() { }\n}\n' > src/FooTest.java
+
+# dirty: an untracked dir is recorded per file
+mkdir -p scratch && printf 'a\n' > scratch/a.txt
+check "dirty" 0 '^dirty=3$' "$SF" dirty "$ID"
+has "dirty file" '^scratch/a.txt$'
+check "changed hides dirty" 0 '^changed=0$' "$SF" changed "$ID"
+"$SF" state "$ID" preexisting_dirty=scratch/ > /dev/null
+check "changed hides dirty dir" 0 '^changed=2$' "$SF" changed "$ID"
+"$SF" state "$ID" preexisting_dirty=- > /dev/null
+rm -r scratch
 
 # changed: modified, new tracked-by-HEAD check
 check "changed" 0 '^changed=2$' "$SF" changed "$ID"

@@ -24,6 +24,7 @@ usage() {
 Usage: atelier <subcommand> <run-id> [args]
 
   init <id> <input>        create the run dir, usage.md, state.md; exclude .atelier/
+  dirty <id>               set preexisting_dirty from the current worktree changes
   state <id> k=v...        set state.md fields (counters accept +1); `state <id> get <key>`
   clock                    print epoch seconds
   start <id> <agent>       store the start time of a subagent run; `log` reads it when start is -
@@ -41,7 +42,8 @@ Usage: atelier <subcommand> <run-id> [args]
   recheck-diff <id>        write recheck.diff against review_tree
   report <id> [--short]    usage report
 
-Env: ATELIER_TIMEOUT  seconds for `run` (default 570)
+Env: ATELIER_TIMEOUT       seconds for `run baseline|verify+lint` (default 570)
+     ATELIER_FULL_TIMEOUT  seconds for `run full` (default 3600)
 EOF
 }
 
@@ -143,6 +145,36 @@ EOF
   echo "result=ok dir=$RD"
 }
 
+porcelain_paths() { # git status -> one path per line; a rename gives both paths
+  local line p
+  git --no-pager status --porcelain -uall | while IFS= read -r line; do
+    p=${line:3}
+    case "$p" in *" -> "*) printf '%s\n' "${p%% -> *}"; p=${p##* -> } ;; esac
+    printf '%s\n' "$p"
+  done | sed 's/^"//; s/"$//'
+}
+
+cmd_dirty() {
+  local paths n
+  paths=$(porcelain_paths | grep -v '^\.atelier/' || true)
+  n=$(printf '%s' "$paths" | awk 'END { print NR }')
+  state_put preexisting_dirty "$(printf '%s' "$paths" | paste -sd, - | sed 's/^$/-/')"
+  echo "dirty=$n"
+  printf '%s\n' "$paths" | sed -n '1,20p' | sed '/^$/d'
+}
+
+is_dirty() { # path -> 0 if preexisting_dirty lists it, or a directory (ending in /) that holds it
+  local e IFS=','
+  for e in $DIRTY; do
+    case "$e" in
+      ''|-) ;;
+      */) case "$1" in "$e"*) return 0 ;; esac ;;
+      *) if [ "$1" = "$e" ]; then return 0; fi ;;
+    esac
+  done
+  return 1
+}
+
 # ---------------------------------------------------------------- usage.md
 
 append_row() { # phase agent mode outcome model tokens tool_uses duration
@@ -194,7 +226,7 @@ run_watched() { # secs log cmd -> exit code; 124 on timeout
 }
 
 cmd_run() { # mode
-  local mode=${1:-} log cmd="" verify lint full start dur rc=0 outcome
+  local mode=${1:-} log cmd="" verify lint full start dur rc=0 outcome secs=${ATELIER_TIMEOUT:-570}
   verify=$(state_get verify_cmd)
   lint=$(state_get lint_cmd)
   full=$(state_get full_cmd)
@@ -209,13 +241,13 @@ cmd_run() { # mode
         if [ -n "$cmd" ]; then cmd="$cmd && ( $lint )"; else cmd="( $lint )"; fi
       fi ;;
     full)
-      log=full.log
+      log=full.log; secs=${ATELIER_FULL_TIMEOUT:-3600}
       if [ "$full" != - ] && [ "$full" != "$verify" ]; then cmd=$full; fi ;;
     *) die "run mode: baseline | verify+lint | full" ;;
   esac
   if [ -z "$cmd" ]; then echo "result=skipped mode=$mode"; return 0; fi
   start=$(date +%s)
-  run_watched "${ATELIER_TIMEOUT:-570}" "$RD/$log" "$cmd" 2>/dev/null || rc=$?
+  run_watched "$secs" "$RD/$log" "$cmd" 2>/dev/null || rc=$?
   dur="$(( $(date +%s) - start ))s"
   case "$rc" in 0) outcome=pass ;; 124) outcome=timeout ;; *) outcome=fail ;; esac
   append_row "$(state_get phase)" command "$mode" "$outcome" - - - "$dur"
@@ -246,7 +278,7 @@ mark_invalid() { # agent: set the outcome of that agent's last row to invalid
 }
 
 cmd_validate() { # file agent
-  local file=${1:-} agent=${2:-} cap heads h lines oldifs norow=0 lastrow prev
+  local file=${1:-} agent=${2:-} cap heads h lines oldifs norow=0 lastrow prev v="$RD/.validated"
   if [ -z "$file" ] || [ -z "$agent" ]; then die "validate needs: file agent"; fi
   case "$file" in
     digest.md)
@@ -260,9 +292,10 @@ cmd_validate() { # file agent
     *) die "validate: unknown file $file" ;;
   esac
   lastrow=$(awk -F'|' -v a="$agent" '/^\| *[0-9]/ { x = $4; gsub(/^ +| +$/, "", x); if (x == a) { n = $2; gsub(/ /, "", n); l = n } } END { print l + 0 }' "$RD/usage.md")
-  prev=$(awk -v f="$file" '$1 == f { p = $2 } END { print p + 0 }' "$RD/.validated" 2>/dev/null || echo 0)
+  # One subagent row validates one handoff file once, whatever its name.
+  prev=$(awk -v a="$agent" '$1 == a { p = $2 } END { print p + 0 }' "$v" 2>/dev/null || echo 0)
   if [ "$lastrow" -le "$prev" ]; then
-    FAILED=1; norow=1; find_add "no new usage.md row for $agent since the last check of $file: the orchestrator must not write this file"
+    FAILED=1; norow=1; find_add "no new usage.md row for $agent since its last valid file: the orchestrator must not write $file"
   fi
   if [ ! -s "$RD/$file" ]; then
     FAILED=1; find_add "$file is missing or empty"
@@ -279,8 +312,8 @@ cmd_validate() { # file agent
   IFS=$oldifs
   if [ "$FAILED" -eq 1 ] && [ "$norow" -eq 0 ]; then mark_invalid "$agent"; fi
   if [ "$FAILED" -eq 0 ]; then
-    { grep -v "^$file " "$RD/.validated" 2>/dev/null || true; echo "$file $lastrow"; } > "$RD/.validated.tmp"
-    mv "$RD/.validated.tmp" "$RD/.validated"
+    { grep -v "^$agent " "$v" 2>/dev/null || true; echo "$agent $lastrow"; } > "$v.tmp"
+    mv "$v.tmp" "$v"
   fi
   finish "result=$([ "$FAILED" -eq 0 ] && echo ok || echo invalid) file=$file lines=$lines cap=$cap"
 }
@@ -360,6 +393,9 @@ cmd_plan_gate() { # [--amendment N]
   if [ ! -f "$src" ]; then die "missing $src"; fi
   while IFS='|' read -r kind path; do
     if [ -z "$kind" ]; then continue; fi
+    if is_dirty "$path"; then
+      find_add "warn: $path is in preexisting_dirty: gates, review and discard do not see its changes"; warns=$((warns + 1))
+    fi
     case "$kind" in
       modify|delete)
         if [ ! -e "$path" ]; then find_add "miss: $kind step: $path does not exist"; misses=$((misses + 1)); fi ;;
@@ -384,39 +420,38 @@ cmd_plan_gate() { # [--amendment N]
       fi
     done < <(sigs_of "$src")
   fi
-  if [ "$misses" -gt 0 ]; then FAILED=1; fi
   if [ -z "$amend" ]; then
     v=$(plan_cmd "$src" verify); f=$(plan_cmd "$src" Full); l=$(plan_cmd "$src" Lint)
-    if [ -n "$v" ]; then state_put verify_cmd "$v"; fi
+    if [ -n "$v" ]; then state_put verify_cmd "$v"
+    else find_add "miss: no verify command in ## Verify (a \`command\` or none)"; misses=$((misses + 1)); fi
     state_put full_cmd "${f:--}"
     state_put lint_cmd "${l:--}"
     cmds=" verify=$(state_get verify_cmd) full=$(state_get full_cmd) lint=$(state_get lint_cmd)"
   fi
+  if [ "$misses" -gt 0 ]; then FAILED=1; fi
   finish "result=$([ "$misses" -eq 0 ] && echo ok || echo miss) misses=$misses warnings=$warns$cmds"
 }
 
 # ---------------------------------------------------------------- gates
 
 changed_paths() { # worktree paths, not preexisting_dirty
-  local dirty line p
-  dirty=",$(state_get preexisting_dirty),"
+  local line p
   git --no-pager status --porcelain -uall | while IFS= read -r line; do
     p=${line:3}
     case "$p" in *" -> "*) p=${p##* -> } ;; esac
     p=${p#\"}; p=${p%\"}
-    case "$dirty" in *",$p,"*) continue ;; esac
+    if is_dirty "$p"; then continue; fi
     printf '%s\n' "$p"
   done
 }
 
 cmd_changed() {
-  local dirty line p old code n=0 out="" kind
-  dirty=",$(state_get preexisting_dirty),"
+  local line p old code n=0 out="" kind
   while IFS= read -r line; do
     code=${line:0:2}; p=${line:3}; old=""
     case "$p" in *" -> "*) old=${p%% -> *}; p=${p##* -> } ;; esac
     p=${p#\"}; p=${p%\"}; old=${old#\"}; old=${old%\"}
-    case "$dirty" in *",$p,"*) continue ;; esac
+    if is_dirty "$p"; then continue; fi
     if [ -n "$old" ]; then out="${out}head $old"$'\n'; n=$((n + 1)); fi
     if [ "$code" != "??" ] && git cat-file -e "HEAD:$p" 2>/dev/null; then kind=head; else kind=new; fi
     out="${out}$kind $p"$'\n'; n=$((n + 1))
@@ -434,7 +469,7 @@ weak_scan() { # file base -> "removed added skip_added"
 }
 
 cmd_gates() {
-  local base=HEAD allowed modify deletes tests f name p scope=0 tmiss=0 weak=0 a r ad sk
+  local base=HEAD allowed modify deletes tests f name p d scope=0 tmiss=0 weak=0 a r ad sk
   allowed="$RD/.gates.allowed"; modify="$RD/.gates.modify"; deletes="$RD/.gates.delete"; tests="$RD/.gates.tests"
   : > "$allowed"; : > "$modify"; : > "$deletes"; : > "$tests"
   for f in "$RD/plan.md" $(amend_files); do
@@ -445,10 +480,16 @@ cmd_gates() {
     tests_of "$f" >> "$tests"
     tests_of "$f" | cut -d'|' -f1 >> "$allowed"
   done
-  # 1. scope
+  # 1. scope (test snapshots in a __snapshots__ dir next to a planned test file are allowed)
   while IFS= read -r p; do
     if [ -z "$p" ]; then continue; fi
-    if ! grep -qxF -- "$p" "$allowed"; then find_add "scope: $p is not in the plan"; scope=$((scope + 1)); fi
+    if grep -qxF -- "$p" "$allowed"; then continue; fi
+    case "$p" in
+      */__snapshots__/*|__snapshots__/*)
+        d=${p%__snapshots__/*}
+        if cut -d'|' -f1 "$tests" | sed 's|[^/]*$||' | grep -qxF -- "$d"; then continue; fi ;;
+    esac
+    find_add "scope: $p is not in the plan"; scope=$((scope + 1))
   done < <(changed_paths)
   # 2. planned tests exist
   while IFS='|' read -r f name; do
@@ -464,12 +505,18 @@ cmd_gates() {
   done > "$RD/.gates.files"
   while IFS= read -r f; do
     if grep -qxF -- "$f" "$deletes"; then continue; fi
+    if ! git cat-file -e "$base:$f" 2>/dev/null; then
+      # new file: git diff does not see it, so scan its content
+      if [ -f "$f" ] && grep -qE -- "$SKIP" "$f"; then find_add "weakened: skip marker in new file $f"; weak=$((weak + 1)); fi
+      continue
+    fi
     read -r r ad sk <<< "$(weak_scan "$f" "$base")"
     if [ "$sk" -gt 0 ]; then find_add "weakened: skip marker added in $f"; weak=$((weak + 1)); fi
-    if grep -qxF -- "$f" "$modify"; then
+    # a modify step or a planned test file may change test lines: removed <= added
+    if grep -qxF -- "$f" "$modify" || cut -d'|' -f1 "$tests" | grep -qxF -- "$f"; then
       if [ "$r" -gt "$ad" ]; then find_add "weakened: $f removes $r test lines, adds $ad"; weak=$((weak + 1)); fi
     elif [ "$r" -gt 0 ]; then
-      find_add "weakened: $f removes $r test lines and is not a modify step"; weak=$((weak + 1))
+      find_add "weakened: $f removes $r test lines and is not in the plan"; weak=$((weak + 1))
     fi
   done < "$RD/.gates.files"
   rm -f "$allowed" "$modify" "$deletes" "$tests" "$RD/.gates.files"
@@ -527,15 +574,14 @@ snapshot_tree() {
 }
 
 cmd_review_diff() {
-  local base=HEAD tree out="$RD/review.diff" dirty p
+  local base=HEAD tree out="$RD/review.diff" p
   tree=$(snapshot_tree)
   state_put review_tree "$tree"
   build_excl
   git --no-pager diff "$base" -- . ${EXCL[@]+"${EXCL[@]}"} > "$out"
-  dirty=",$(state_get preexisting_dirty),"
   while IFS= read -r p; do
     p=${p#\"}; p=${p%\"}
-    case "$dirty" in *",$p,"*) continue ;; esac
+    if is_dirty "$p"; then continue; fi
     git --no-pager diff --no-index /dev/null "$p" >> "$out" || true
   done < <(git --no-pager status --porcelain -uall | sed -n 's/^?? //p')
   echo "lines=$(awk 'END { print NR }' "$out") tree=$tree"
@@ -613,9 +659,12 @@ case "$id" in */*|.*) die "bad run id: $id" ;; esac
 RD=".atelier/runs/$id"
 
 if [ "$cmd" != init ] && [ ! -d "$RD" ]; then die "no run dir: $RD"; fi
+DIRTY=""
+if [ -f "$RD/state.md" ]; then DIRTY=$(state_get preexisting_dirty); fi
 
 case "$cmd" in
   init) cmd_init "$@" ;;
+  dirty) cmd_dirty ;;
   state) cmd_state "$@" ;;
   log) cmd_log "$@" ;;
   run) cmd_run "$@" ;;
