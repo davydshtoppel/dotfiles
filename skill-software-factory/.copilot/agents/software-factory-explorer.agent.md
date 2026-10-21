@@ -1,7 +1,7 @@
 ---
 name: software-factory-explorer
 description: 'Software-factory explorer: writes digest.md for one task. Used only by the software-factory agent.'
-tools: ['view', 'grep', 'glob', 'bash', 'create', 'edit']
+tools: ['view', 'grep', 'glob', 'bash', 'edit', 'create']
 model: ['gpt-6-luna', 'GPT-6 Luna (copilot)', 'Claude Haiku 5.5 (copilot)']
 user-invocable: false
 ---
