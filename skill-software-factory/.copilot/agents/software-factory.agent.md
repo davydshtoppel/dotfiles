@@ -25,7 +25,7 @@ The agent name is `software-factory-<name>`. "Run" a subagent means start it as 
 **Tokens**
 - Pass file paths, not contents. For failures pass the path of `verify.log`, not its tail.
 - Read only `plan.md` (checkpoint 1), `impl-report.md`, `review.md`, `recheck.md` and amendments. Never read `digest.md`, `review.diff` or `recheck.diff`.
-- Never run the explorer twice in one run.
+- Run the explorer in mode `explore` once. Mode `refresh` runs at most once per run, only on Re-plan from scratch. To check for a refresh, run `Grep -c '^## Corrections'` on `digest.md`. Never Read it.
 
 **Git**
 - Every git command uses `git --no-pager`.
@@ -48,7 +48,7 @@ The user's message is `INPUT`.
 |---|---|
 | empty | Print `<JIRA-KEY \| task description>` or `resume [run-id]`. Stop. |
 | `resume` | List `.software-factory/runs/*/state.md` (id, phase, updated). Stop. |
-| `resume <id>` | Read its `state.md`. If `branch` is set and differs from `git --no-pager branch --show-current`, ask: switch back / abort. Then continue at `phase`: checkpoint = show it again; `implement` = task `resume` if `impl-report.md` exists, else `implement`; `verify` = run verify again; `review` = rebuild `review.diff`, run the reviewer (Phase 4.5); `recheck` = run Phase 4.6 (if `review_tree` is `-`, go to checkpoint 2); `commit` = check `git --no-pager log -1` before you commit again. |
+| `resume <id>` | Read its `state.md`. If `branch` is set and differs from `git --no-pager branch --show-current`, ask: switch back / abort. Then continue at `phase`: checkpoint = show it again; `refresh` = run **refresh digest** again, then Phase 2; `implement` = task `resume` if `impl-report.md` exists, else `implement`; `verify` = run verify again; `review` = rebuild `review.diff`, run the reviewer (Phase 4.5); `recheck` = run Phase 4.6 (if `review_tree` is `-`, go to checkpoint 2); `commit` = check `git --no-pager log -1` before you commit again. |
 | other | New run. |
 
 ## Procedures
@@ -57,7 +57,7 @@ The user's message is `INPUT`.
 
 | File | Cap (lines) | Must contain |
 |---|---|---|
-| `digest.md` | 150 | `## Git`, `## Verify` |
+| `digest.md` | 150 | `## Git`, `## Verify` (after a refresh also `## Corrections`) |
 | `plan.md` | 200 | `## Steps`, `## Verify`, `## Git` |
 | `plan-amendment-<N>.md` | 80 | `## Changes to the plan`, a `Scope change:` line |
 | `impl-report.md` | 60 | a `Status:` line |
@@ -65,6 +65,11 @@ The user's message is `INPUT`.
 | `recheck.md` | 40 | a `Verdict:` line, `## Findings` |
 
 **count amendments.** Run `grep -lE '^# Amendment [0-9]+ \((amend|diagnose)\)' .software-factory/runs/<id>/plan-amendment-*.md 2>/dev/null | wc -l`. The result is `amendments`. Count from disk, never from memory. Files in `superseded/` and `revise` files do not match. Do this and check the cap **before** every planner run in mode `amend` or `diagnose`. Write the result to `counters` in `state.md`.
+
+**refresh digest.** The digest may be wrong at the root (the planner said "recommend re-plan", or a deviation repeats). Run it once per run, before a re-plan.
+1. Run `Grep -c '^## Corrections'` on `digest.md`. If the count is above 0, the refresh is done. Skip the rest.
+2. Run the explorer with `mode: refresh`. Pass `RUN_DIR`, the path of `impl-report.md` and the paths of the amendments in `superseded/`.
+3. Validate `digest.md`. It must also contain `## Corrections`.
 
 **next N.** `N` = number of existing `plan-amendment-*.md` files in the run dir + 1. A file is never overwritten.
 
@@ -91,7 +96,7 @@ A tool timeout (no `exit=` line) is a failure.
 
 `| # | phase | agent | mode/task | outcome | model | tokens | tool_uses | duration |`
 
-- **Subagent row:** agent = subagent name. mode/task = `implement`, `resume`, `amend`, `diagnose`, `revise`, `plan`, `review`, `recheck`, or `fix (verify \| gate \| review \| user \| full)`; continuation `fix (<cause>, cont.)`; rerun after a validate miss `<mode> (retry)`. outcome = `ok`, `deviation` (implementer returned `DEVIATION`) or `invalid` (validate failed, a retry row follows). model = configured model from the Role column. tokens, tool_uses = `n/a` (Copilot does not report them to the orchestrator). duration = seconds from **run subagent**, for example `212s`.
+- **Subagent row:** agent = subagent name. mode/task = `explore`, `refresh`, `implement`, `resume`, `amend`, `diagnose`, `revise`, `plan`, `review`, `recheck`, or `fix (verify \| gate \| review \| user \| full)`; continuation `fix (<cause>, cont.)`; rerun after a validate miss `<mode> (retry)`. outcome = `ok`, `deviation` (implementer returned `DEVIATION`) or `invalid` (validate failed, a retry row follows). model = configured model from the Role column. tokens, tool_uses = `n/a` (Copilot does not report them to the orchestrator). duration = seconds from **run subagent**, for example `212s`.
 - **Command row:** agent = `command`. mode/task = `baseline`, `verify+lint` or `full`. outcome = `pass`, `fail` or `timeout`. model, tokens, tool_uses = `-`. duration = `duration=` from the echo line; `n/a` on timeout.
 
 Keep `subagent_duration` in `state.md` as the running sum of subagent `duration` in seconds (`n/a` counts as 0).
@@ -110,6 +115,7 @@ At checkpoint 2 show only the total subagent duration, in one line. Add: tokens 
 | `amendments` | 2 | planner `amend` and `diagnose` together | reset to 0 by "Re-plan from scratch" |
 | `verify_failures` | 3 | verify failures and gate misses | 0 on any user-requested work |
 | `review_rounds` | 1 | review fix rounds | never |
+| explorer `refresh` | 1 | `## Corrections` in `digest.md` (count from disk) | never |
 
 - At a cap, stop at a checkpoint. The user decides. Never loop past a cap.
 - The recheck (Phase 4.6) runs at most once per run. It never starts a fix. Open findings go to checkpoint 2.
@@ -124,7 +130,7 @@ At checkpoint 2 show only the total subagent duration, in one line. Add: tokens 
 | Verify failure 2 | If `amendments` < 2: count amendments, run planner `diagnose` with next N and `verify.log`, run implementer `resume`, verify again. Else treat as failure 3. |
 | Gate miss or verify failure 3 | Stop. Show the tail and the log path. Ask: **Give instructions** (planner `revise` with the user's text, implementer `resume`, verify again, `verify_failures` = 0) / **Accept unverified and go to checkpoint 2** / **Abort**. |
 | DEVIATION, `amendments` < 2, no repeat | Count amendments. Run planner `amend` with next N (it reads all deviations in `impl-report.md`). If the amendment says `Scope change: yes`, show it and ask **Approve amendment / Revise / Abort**. Run implementer `resume`. |
-| DEVIATION, `amendments` = 2 or repeat rule | Deviation checkpoint. Show the deviation and the number of deviation rounds (`deviation` rows in `usage.md`). Ask: **Re-plan from scratch** (move all `plan-amendment-*.md` to `.software-factory/runs/<id>/superseded/`, go to Phase 2 with the deviation as feedback, `amendments` = 0, `verify_failures` = 0) / **Give instructions** (planner `revise` with the user's text, then implementer `resume`) / **Abort**. |
+| DEVIATION, `amendments` = 2 or repeat rule | Deviation checkpoint. Show the deviation and the number of deviation rounds (`deviation` rows in `usage.md`). Ask: **Re-plan from scratch** (move all `plan-amendment-*.md` to `.software-factory/runs/<id>/superseded/`, set `phase: refresh`, run **refresh digest**, go to Phase 2 with the deviation as feedback, `amendments` = 0, `verify_failures` = 0) / **Give instructions** (planner `revise` with the user's text, then implementer `resume`) / **Abort**. |
 | Review `CHANGES` | `review_rounds`++. Run (or continue) implementer `fix` with the `review.md` path. Then gates, then Phase 4. A DEVIATION is handled as above. Then run the recheck (Phase 4.6). It never starts a second fix. |
 | Full suite fail | See Phase 5, step 0. |
 
@@ -150,7 +156,7 @@ At checkpoint 2 show only the total subagent duration, in one line. Add: tokens 
 
 ## Phase 1 — Explore
 
-Run the explorer. Tell it to read the task from `$RUN_DIR/task.md` and write `$RUN_DIR/digest.md`. Validate `digest.md`. Set `phase: plan`.
+Run the explorer with `mode: explore`. Tell it to read the task from `$RUN_DIR/task.md` and write `$RUN_DIR/digest.md`. Validate `digest.md`. Set `phase: plan`.
 
 ## Phase 2 — Plan
 
@@ -283,7 +289,7 @@ Write it once in Phase 0. After that, update only the changed fields with Edit, 
 ```markdown
 # Factory run <id>
 - input: <ticket key or first line of task>
-- phase: explore | plan | checkpoint-1 | implement | verify | review | recheck | checkpoint-2 | commit | done | aborted
+- phase: explore | refresh | plan | checkpoint-1 | implement | verify | review | recheck | checkpoint-2 | commit | done | aborted
 - base_branch: <name or ->
 - branch: <name or ->
 - verify_cmd: `<command>` | none

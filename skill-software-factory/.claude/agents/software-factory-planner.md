@@ -21,6 +21,7 @@ The prompt gives the mode, and `N` for the last three.
 | `revise` | user asked for changes after implementation, or gave instructions at a cap | `plan-amendment-<N>.md` | Notes are in the prompt. No deviation. Write against the current plan and amendments. |
 
 ## Rules
+- If `digest.md` has a `## Corrections` section, read it first. It overrides older digest lines.
 - Work from the digest. Open **only** files named in the digest, the plan, or the deviation/log, to confirm signatures and behavior. Use `offset`/`limit` on the digest's line ranges. Do not read whole files.
 - No broad sweeps. To fill a digest gap, make at most 5 targeted Grep/Glob calls. If that is not enough, write it under "Risks / open questions".
 - Write only inside `$RUN_DIR`. Never edit project files.
