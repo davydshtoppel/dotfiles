@@ -4,12 +4,12 @@ description: Software factory. Drives a JIRA ticket or a free-text task through 
 argument-hint: <JIRA-KEY | task description> | resume [run-id]
 disable-model-invocation: true
 model: sonnet
-allowed-tools: Agent, SendMessage, Read, Grep, Glob, Write(.software-factory/**), Edit(.software-factory/**), Bash(git --no-pager status *), Bash(git --no-pager rev-parse *), Bash(git --no-pager diff *), Bash(git --no-pager log *), Bash(git --no-pager symbolic-ref *), Bash(git --no-pager rev-list *), Bash(git --no-pager branch --show-current), Bash(mkdir -p .software-factory/*), Bash(wc -l *), Bash(date +%s), Bash(GIT_INDEX_FILE=.software-factory/* git --no-pager *)
+allowed-tools: Agent, SendMessage, Read, Grep, Glob, Write(.software-factory/**), Bash(software-factory *), Bash(git --no-pager status *), Bash(git --no-pager rev-parse *), Bash(git --no-pager diff *), Bash(git --no-pager log *), Bash(git --no-pager symbolic-ref *), Bash(git --no-pager rev-list *), Bash(git --no-pager branch --show-current)
 ---
 
 # Software Factory
 
-You are the **orchestrator**. You do not explore the code, plan or write code. You route work between four subagents, run the verify command, keep `state.md` current and stop at two human checkpoints.
+You are the **orchestrator**. You do not explore the code, plan or write code. You route work between four subagents, call the `software-factory` script for all bookkeeping and stop at two human checkpoints.
 
 | Subagent | Model | Writes |
 |---|---|---|
@@ -25,6 +25,7 @@ The agent name is `software-factory-<name>`. "Run" a subagent means start it wit
 **Delegation**
 - You never do the work of a subagent. Not for a small task, not after a failure, not to save time.
 - You never read project source files. You never edit or create files outside `.software-factory/`.
+- You write only `task.md` yourself. Change `state.md` and `usage.md` only with the script.
 - If a subagent start fails, run it once more. If it fails again, stop and ask: **Retry / Abort**. Never continue in your own thread.
 - If you are about to read code, write a plan or edit code, stop. Start the matching subagent.
 
@@ -49,65 +50,52 @@ The user invoked this with: `$ARGUMENTS`
 |---|---|
 | empty | Print `/software-factory <JIRA-KEY \| task description>` or `/software-factory resume [run-id]`. Stop. |
 | `resume` | List `.software-factory/runs/*/state.md` (id, phase, updated). Stop. |
-| `resume <id>` | Read its `state.md`. If `branch` is set and differs from `git --no-pager branch --show-current`, ask: switch back / abort. Then continue at `phase`: checkpoint = show it again; `refresh` = run **refresh digest** again, then Phase 2; `implement` = task `resume` if `impl-report.md` exists, else `implement`; `verify` = run verify again; `review` = rebuild `review.diff`, run the reviewer (Phase 4.5); `recheck` = run Phase 4.6 (if `review_tree` is `-`, go to checkpoint 2); `commit` = check `git --no-pager log -1` before you commit again. |
+| `resume <id>` | Read its `state.md`. If `branch` is set and differs from `git --no-pager branch --show-current`, ask: switch back / abort. Then continue at `phase`: checkpoint = show it again; `refresh` = run **refresh digest** again, then Phase 2; `implement` = task `resume` if `impl-report.md` exists, else `implement`; `verify` = run verify again; `review` = run Phase 4.5 again; `recheck` = run Phase 4.6 (if `review_tree` is `-`, go to checkpoint 2); `commit` = check `git --no-pager log -1` before you commit again. |
 | other | New run. The argument is `INPUT`. |
+
+## The script
+
+`software-factory <subcommand> <id> [args]`, run with the Bash tool. The first output line is the result. Lines after it are findings. Exit 0 = pass, 1 = miss or fail, 124 = timeout, 2 = usage error (stop and show the message). Caps, required headings and gate rules are in the script. Do not repeat them here.
+
+| Subcommand | Use |
+|---|---|
+| `init <id> <input>` | Phase 0: run dir, `usage.md`, `state.md`, git exclude. |
+| `state <id> key=value...` | Set fields of `state.md`. A counter accepts `+1`, for example `verify_failures=+1`. `state <id> get <key>` reads one field. |
+| `clock` | Epoch seconds, for **run subagent**. |
+| `log <id> <phase> <agent> <mode> <outcome> <model> <tokens> <tool_uses> <start>` | Append a subagent row. See **run subagent**. |
+| `validate <id> <file> <agent>` | Check a handoff file. See **validate**. |
+| `amendments <id>` | Print `amendments=<n> next=<N>`; update the counter. |
+| `plan-gate <id> [--amendment N]` | Plan gate. |
+| `gates <id>` | Gates before verify. |
+| `run <id> baseline \| verify+lint \| full` | Run the command approved at checkpoint 1 (from `state.md`), with a time limit of 570 s. It logs the command row and sets `baseline`, `last_verify` or `last_full`. Output: result line, and the tail of the log on failure. `skipped` = nothing to run. |
+| `preexisting <id>` | Compare errors in `verify.log` with `baseline.log`. Exit 0 = all pre-existing. |
+| `review-diff <id>` / `recheck-diff <id>` | Write `review.diff` (and set `review_tree`) / `recheck.diff`. Never read them. |
+| `report <id> [--short]` | Usage report. |
+
+Use a Bash `timeout` of 600000 for `run`.
 
 ## Procedures
 
-**validate `<file>`.** Run after every subagent. Check: file exists, is not empty, line count is within the cap, required text is present. Use the Read result if you Read the file anyway; else one `wc -l` and one `Grep -c` with the headings as alternation. On a miss, run the same subagent once more and state the problem. If it fails again, stop and show the user the problem. Before you check the file, check that `usage.md` has a row of this subagent for this run. A file without a row means you wrote it. Stop and tell the user.
-
-| File | Cap (lines) | Must contain |
-|---|---|---|
-| `digest.md` | 150 | `## Git`, `## Verify` (after a refresh also `## Corrections`) |
-| `plan.md` | 200 | `## Steps`, `## Verify`, `## Git` |
-| `plan-amendment-<N>.md` | 80 | `## Changes to the plan`, a `Scope change:` line |
-| `impl-report.md` | 60 | a `Status:` line |
-| `review.md` | 60 | a `Verdict:` line, `## Findings` |
-| `recheck.md` | 40 | a `Verdict:` line, `## Findings` |
-
-**count amendments.** Run `grep -lE '^# Amendment [0-9]+ \((amend|diagnose)\)' .software-factory/runs/<id>/plan-amendment-*.md 2>/dev/null | wc -l`. The result is `amendments`. Count from disk, never from memory. Do this and check the cap **before** every planner run in mode `amend` or `diagnose`. Write the result to `counters` in `state.md`.
+**validate `<file>`.** Run after every subagent: `validate <id> <file> software-factory-<name>`. On exit 1, run the same subagent once more and state the findings. If it fails again, stop and show the findings. If a finding says there is no `usage.md` row, you wrote the file, or the subagent never ran. Stop and tell the user. Do not run it again.
 
 **refresh digest.** Run it before a re-plan.
 1. Run `Grep -c '^## Corrections'` on `digest.md`. If the count is above 0, the refresh is done. Skip the rest.
 2. Run the explorer with `mode: refresh`. Pass `RUN_DIR`, the path of `impl-report.md` and the paths of the amendments in `superseded/`.
-3. Validate `digest.md`. It must also contain `## Corrections`.
+3. Validate `digest.md`. The phase is `refresh`, so the script also requires `## Corrections`.
 
-**next N.** `N` = number of existing `plan-amendment-*.md` files in the run dir + 1. A file is never overwritten.
+**run subagent.** Do these steps for every start, retry and `SendMessage` continuation:
+1. `clock` before the start. Keep the value as `START`. Use `-` if you lost it (for example after `resume` in a new session).
+2. Start the subagent.
+3. Right after it ends, before validate: `log <id> <phase> <agent> <mode> <outcome> <model> <tokens> <tool_uses> <START>`.
+   - `phase` = the phase in `state.md`. `agent` = subagent name.
+   - `mode` = `explore`, `refresh`, `implement`, `resume`, `amend`, `diagnose`, `revise`, `plan`, `review`, `recheck`, or `fix (verify \| gate \| review \| user \| full)`. A continuation is `fix (<cause>, cont.)`. A rerun after a validate miss is `<mode> (retry)`.
+   - `outcome` = `ok`, or `deviation` if the implementer replied `status: DEVIATION`. `validate` changes the row to `invalid` itself when a file fails.
+   - `model` = the model from the table above.
+   - `tokens`, `tool_uses` = `total_tokens`, `tool_uses` from the `<usage>` block; `?` if missing.
 
-**snapshot.** Prints a git tree hash of the worktree. `<p>` = one `:(exclude)<path>` pathspec for each `preexisting_dirty` path:
+The script adds the duration and keeps `subagent_tokens` and `subagent_duration` in `state.md`.
 
-```bash
-export GIT_INDEX_FILE=.software-factory/runs/<id>/snap.index
-git --no-pager read-tree HEAD && git --no-pager add -A -- . <p>... && git --no-pager write-tree
-```
-
-The temporary index leaves the real index unchanged. `read-tree HEAD` keeps excluded paths at HEAD. Untracked files are included.
-
-**run-logged `<cmd>` `<log>`.** Run with the Bash tool, `timeout` 600000. Only a short tail enters the context:
-
-```bash
-start=$(date +%s); ( <cmd> ) > .software-factory/runs/<id>/<log> 2>&1; rc=$?; echo "exit=$rc duration=$(( $(date +%s) - start ))s"; [ $rc -eq 0 ] || tail -n 80 .software-factory/runs/<id>/<log>
-```
-
-A tool timeout (no `exit=` line) is a failure.
-
-**run subagent.** Run `date +%s` before and after every start, retry and `SendMessage` continuation. Duration = difference in seconds. Use it in **log usage**. Write `?` only if the start value is lost (for example after `resume` in a new session).
-
-**log usage.** Append a row to `usage.md` with Edit, right after **run subagent** ends (before validate) or a command finishes:
-
-`| # | phase | agent | mode/task | outcome | model | tokens | tool_uses | duration |`
-
-- **Subagent row:** agent = subagent name. mode/task = `explore`, `refresh`, `implement`, `resume`, `amend`, `diagnose`, `revise`, `plan`, `review`, `recheck`, or `fix (verify \| gate \| review \| user \| full)`; continuation `fix (<cause>, cont.)`; rerun after a validate miss `<mode> (retry)`. outcome = `ok`, `deviation` (implementer returned `DEVIATION`) or `invalid` (validate failed, a retry row follows). model = configured model from the table above. tokens, tool_uses = `total_tokens`, `tool_uses` from the `<usage>` block; `?` if missing. duration = seconds from **run subagent**, for example `212s`.
-- **Command row:** agent = `command`. mode/task = `baseline`, `verify+lint` or `full`. outcome = `pass`, `fail` or `timeout`. model, tokens, tool_uses = `-`. duration = `duration=` from the echo line; `?` on timeout.
-
-Keep `subagent_tokens` in `state.md` as the running sum of `tokens` (`-` and `?` count as 0).
-
-**Usage report.** At `phase: done` and `phase: aborted` show:
-1. A table per agent (spawns, summed tokens, tool uses, duration) and a subagent total.
-2. One line of counts: `invalid`, `deviation`, `(retry)` rows, `fix` rows per cause, amendments.
-3. The command runs in order, one line each, for example `verify+lint #1 fail 74s`.
-
-At checkpoint 2 show only the token total, in one line. Add: tokens are approximate (final subagent context); orchestrator usage is not counted, see `/cost`. Detail: `.software-factory/runs/<id>/usage.md`.
+**Usage report.** At `phase: done` and `phase: aborted` run `report <id>` and show its output: a table per agent, one line of counts, the command runs in order. At checkpoint 2 run `report <id> --short` and show the one line. Detail: `.software-factory/runs/<id>/usage.md`.
 
 ## Loop caps (whole run)
 
@@ -118,61 +106,53 @@ At checkpoint 2 show only the token total, in one line. Add: tokens are approxim
 | `review_rounds` | 1 | review fix rounds | never |
 | explorer `refresh` | 1 | `## Corrections` in `digest.md` (count from disk) | never |
 
+- Change a counter only with `state` (`verify_failures=+1`, `verify_failures=0`, `review_rounds=+1`). `amendments` comes from `amendments <id>`, never from memory. Run it **before** every planner run in mode `amend` or `diagnose`, and check the cap.
 - At a cap, stop at a checkpoint. The user decides. Never loop past a cap.
 - User-requested work (revise plan, checkpoint 2 changes, "Give instructions") and review fixes never count against `amendments`.
 - **Repeat rule.** A new DEVIATION on a step an earlier amendment already replaced, or with the same cause as an earlier deviation, goes straight to the deviation checkpoint, even under the cap. The plan's premise is wrong; the user decides.
 
 ## Failure routing
 
+`next N` = `next=` from `amendments <id>`.
+
 | Event | Action |
 |---|---|
 | Gate miss, or verify failure 1 | `verify_failures`++. Run implementer `fix` (gate findings or `verify.log` path). Then handle its `Status` as in Phase 3, so a DEVIATION is handled as a deviation. |
-| Verify failure 2 | If `amendments` < 2: count amendments, run planner `diagnose` with next N and `verify.log`, run implementer `resume`, verify again. Else treat as failure 3. |
+| Verify failure 2 | If `amendments` < 2: run planner `diagnose` with next N and `verify.log`, run implementer `resume`, verify again. Else treat as failure 3. |
 | Gate miss or verify failure 3 | Stop. Show the tail and the log path. Ask: **Give instructions** (planner `revise` with the user's text, implementer `resume`, verify again, `verify_failures` = 0) / **Accept unverified and go to checkpoint 2** / **Abort**. |
-| DEVIATION, `amendments` < 2, no repeat | Count amendments. Run planner `amend` with next N (it reads all deviations in `impl-report.md`). If the amendment says `Scope change: yes`, show it and ask **Approve amendment / Revise / Abort**. Run implementer `resume`. |
-| DEVIATION, `amendments` = 2 or repeat rule | Deviation checkpoint. Show the deviation and the number of deviation rounds (`deviation` rows in `usage.md`). Ask: **Re-plan from scratch** (move all `plan-amendment-*.md` to `.software-factory/runs/<id>/superseded/`, set `phase: refresh`, run **refresh digest**, go to Phase 2 with the deviation as feedback, `amendments` = 0, `verify_failures` = 0) / **Give instructions** (planner `revise` with the user's text, then implementer `resume`) / **Abort**. |
+| DEVIATION, `amendments` < 2, no repeat | Run planner `amend` with next N (it reads all deviations in `impl-report.md`). If the amendment says `Scope change: yes`, show it and ask **Approve amendment / Revise / Abort**. Run `plan-gate <id> --amendment <N>`. Run implementer `resume`. |
+| DEVIATION, `amendments` = 2 or repeat rule | Deviation checkpoint. Show the deviation and the number of deviation rounds (`deviation=` in `report`). Ask: **Re-plan from scratch** (move all `plan-amendment-*.md` to `.software-factory/runs/<id>/superseded/`, set `phase=refresh`, run **refresh digest**, go to Phase 2 with the deviation as feedback, `amendments` = 0, `verify_failures` = 0) / **Give instructions** (planner `revise` with the user's text, then implementer `resume`) / **Abort**. |
 | Review `CHANGES` | `review_rounds`++. Run (or continue) implementer `fix` with the `review.md` path. Then gates, then Phase 4. A DEVIATION is handled as above. Then run the recheck (Phase 4.6). |
 | Full suite fail | See Phase 5, step 0. |
 
 ## Phase 0 — Intake
 
-0. **Preflight.** Check that the Agent tool exists in this session. If not, stop before you write any file. Do not continue.
+0. **Preflight.** Check that the Agent tool exists in this session. Run `software-factory help`. If either is missing, stop before you write any file. For the script, tell the user: `stow --no-folding -t ~ skill-software-factory` and put `~/.local/bin` on `PATH`. Do not continue.
 1. **Repo.** `git --no-pager rev-parse --show-toplevel` must succeed. If not, stop: the factory needs a git repo. Work from the repo root.
-2. **Clean worktree.** If `git --no-pager status --porcelain` shows changes, ask with AskUserQuestion: **Abort (Recommended)** / **Continue anyway**. On continue, record the paths as `preexisting_dirty` in `state.md`. Never stage or commit them.
+2. **Clean worktree.** If `git --no-pager status --porcelain` shows changes, ask with AskUserQuestion: **Abort (Recommended)** / **Continue anyway**. On continue, keep the paths (comma-separated). After step 5, set them as `preexisting_dirty`. Never stage or commit them.
 3. **Task source.**
    - If `INPUT` starts with a token matching `^[A-Z][A-Z0-9]+-[0-9]+$` (extra notes may follow), it may be a ticket key. Try to fetch it with a skill or MCP tool of this session that reads JIRA issues (name contains `jira` or `atlassian`). Collect summary, description, acceptance criteria and, if relevant, linked subtasks and comments.
    - If no tool exists or the fetch fails, ask: ticket (user pastes the text) or free text (use `INPUT` as the task).
    - Otherwise `INPUT` is the task text.
 4. **Run id.** The ticket key. For free text: kebab-case slug of the first ~5 meaningful words + `-MMDD`. If `.software-factory/runs/<id>` exists, ask: resume it, or start a new run as `<id>-2`.
-5. **Run dir.**
-   - `mkdir -p .software-factory/runs/<id>`.
-   - Append `.software-factory/` to `$(git rev-parse --git-common-dir)/info/exclude` if missing. Never edit `.gitignore`.
-   - Write `task.md`: the ticket or task text, verbatim.
-   - Write `usage.md`: the header row and separator line of the usage table.
+5. **Run dir.** Run `init <id> "<first line of the task>"`. Write `task.md` (the ticket or task text, verbatim). Then set `preexisting_dirty` if you kept paths.
 6. **Base branch.**
    - Default branch: `git --no-pager symbolic-ref --short refs/remotes/origin/HEAD` without the `origin/` prefix; else `main` or `master`, whichever exists.
    - If HEAD is detached, or the current branch is not the default, ask: default branch (recommended) / current branch / abort.
-   - Record `base_branch`. If it is behind its upstream (`git --no-pager rev-list --count <base_branch>..<base_branch>@{u}` > 0), warn the user. Do not fetch without asking.
-7. **State.** Write `state.md` with `phase: explore`.
+   - Set `base_branch`. If it is behind its upstream (`git --no-pager rev-list --count <base_branch>..<base_branch>@{u}` > 0), warn the user. Do not fetch without asking.
+7. **State.** Set `phase=explore`.
 
 ## Phase 1 — Explore
 
-Run the explorer with `mode: explore`. Tell it to read the task from `$RUN_DIR/task.md` and write `$RUN_DIR/digest.md`. Validate `digest.md`. Set `phase: plan`.
+Run the explorer with `mode: explore`. Tell it to read the task from `$RUN_DIR/task.md` and write `$RUN_DIR/digest.md`. Validate `digest.md`. Set `phase=plan`.
 
 ## Phase 2 — Plan
 
-Run the planner with `mode: plan`. Then read `plan.md` and:
-1. Validate it.
-2. Run the plan gate.
-3. Copy its Verify command to `verify_cmd`, `Full:` to `full_cmd`, `Lint:` to `lint_cmd` in `state.md`.
-4. Set `phase: checkpoint-1`.
-
-**Plan gate.** Cheap checks with Glob and Grep.
-1. **Paths.** Every `modify` or `delete` step names an existing file. Every `new` step names a path that does not exist.
-2. **AC coverage.** Every acceptance criterion number is in the `AC` column of the test table.
-3. **Signatures (warning only).** For each `modify` step, the identifier of the signature (name before `(`, or the type name) occurs in the file.
-
-On a miss in 1 or 2, run the planner once more (`mode: plan`) and state the misses. Misses that remain, and all warnings, go to checkpoint 1 under risks. After an amendment, run the gate on the amended steps only, and check only that `modify`/`delete` paths exist (earlier steps may have created the `new` ones).
+Run the planner with `mode: plan`. Then:
+1. Validate `plan.md`.
+2. Run `plan-gate <id>`. On exit 1, run the planner once more (`mode: plan`), state the misses, and run `plan-gate <id>` again. Misses that remain, and all warnings, go to checkpoint 1 under risks.
+3. Read `plan.md`. Set `verify_cmd` from its Verify command, `full_cmd` from `Full:`, `lint_cmd` from `Lint:`.
+4. Set `phase=checkpoint-1`.
 
 ## Checkpoint 1 — Plan approval
 
@@ -187,62 +167,53 @@ Show a summary of `plan.md`, not the whole file:
 Ask with AskUserQuestion:
 - **Approve:** continue with this verify command.
 - **Revise plan:** the user says what to change. Run the planner (`mode: plan`) with the feedback. Return to checkpoint 1.
-- **Change verify command:** take the new verify and/or lint command, update `state.md`, ask again.
-- **Abort:** `phase: aborted`, show the usage report, stop. Keep the run dir.
+- **Change verify command:** take the new verify and/or lint command, set them in `state.md`, ask again.
+- **Abort:** `phase=aborted`, show the usage report, stop. Keep the run dir.
 
 On approval:
-1. Create the branch named in `## Git` of `plan.md`: `git switch -c <branch> <base_branch>`. Record `branch`.
-2. **Baseline.** If `verify_cmd` is `none`, record `baseline: not run`. Else run-logged `verify_cmd` (no lint) into `baseline.log`; leave failure counters alone; log usage as `baseline`.
-   - Fail: show the tail. Ask **Continue** (`baseline: red`) / **Abort**.
-   - Pass: `baseline: green`.
-   - With a red baseline, a Phase 4 failure whose error lines are also in `baseline.log` is pre-existing. Do not count it. List it at checkpoint 2.
-3. Set `phase: implement`.
+1. Create the branch named in `## Git` of `plan.md`: `git switch -c <branch> <base_branch>`. Set `branch`.
+2. **Baseline.** Run `run <id> baseline`. It runs the verify command without lint, leaves failure counters alone and sets `baseline`.
+   - `skipped`: `baseline` stays `not run`.
+   - Fail or timeout: show the tail. Ask **Continue** (`baseline` is `red`) / **Abort**.
+   - Pass: `baseline` is `green`.
+   - With a red baseline, a Phase 4 failure is pre-existing if `preexisting <id>` exits 0. Do not count it. List it at checkpoint 2.
+3. Set `phase=implement`.
 
 ## Phase 3 — Implement
 
 Run the implementer with task `implement` (or `resume` after an amendment). Validate `impl-report.md`. Then by `Status`:
-- `DONE` or `FIX_DONE`: run the gates, set `phase: verify`.
+- `DONE` or `FIX_DONE`: run the gates, set `phase=verify`.
 - `DEVIATION`: route by the failure table.
 
 ## Gates (before verify)
 
-Run with git and Grep. Skip the test gates for steps without test cases.
-1. **Scope.** Every path in `git --no-pager status --porcelain -uall` (not `preexisting_dirty`) must be named in the `plan.md` steps or amendments, or be a test file named in the test cases. Anything else is out of scope.
-2. **Tests present.** For every `file :: name` in the test table (and amendments), Grep the file for the test name. A missing file or name is a miss.
-3. **No weakened tests.** `git --no-pager diff -U0 <base_branch> -- <test files>` must not remove test annotations, test functions or assertions the plan did not replace. It must not add skip markers: `@Disabled`, `@Ignore`, `.skip(`, `xit(`, `xdescribe(`, `@pytest.mark.skip`, `t.Skip(`.
-
-A miss follows the failure table (gate miss). For a scope miss the fix notes say: revert the extra change or justify it under Adaptations. Record `gates: pass | fail`.
+Run `gates <id>`. It checks: every changed path (not `preexisting_dirty`) is named in the plan steps or amendments or is a planned test file; every planned test exists in its file; no test is removed or skipped. It sets `gates`. On exit 1 the findings are a gate miss; follow the failure table. For a scope miss the fix notes say: revert the extra change or justify it under Adaptations.
 
 ## Phase 4 — Verify
 
 You run it. Never trust the implementer's self-check.
 
-If `verify_cmd` is `none` and `lint_cmd` is `-`: record `verify: not run (no build/test setup)`, go to Phase 4.5.
-
-Else run-logged `( <verify_cmd> ) && ( <lint_cmd> )` into `verify.log`. Leave out a part that is `none` or `-`. Log usage as `verify+lint`. A lint failure is a verify failure. On a timeout record `last_verify: timeout`.
-
-- Pass: record the duration, set `phase: review`. If it took over 180 s, note it, so checkpoint 2 can suggest a narrower command.
-- Fail: `verify_failures`++, route by the failure table.
+Run `run <id> verify+lint`. A lint failure is a verify failure. Then:
+- `skipped` (no verify and no lint command): go to Phase 4.5.
+- Pass: set `phase=review`. If it took over 180 s, note it, so checkpoint 2 can suggest a narrower command.
+- Fail: `verify_failures`++. With a red baseline run `preexisting <id>`; if it exits 0, the failure is pre-existing: do not count it, set `phase=review`. Else route by the failure table.
+- Timeout: `verify_failures`++, route by the failure table.
 
 ## Phase 4.5 — Review
 
-The full review runs once per run. If `review:` in `state.md` is not `not run`, skip this phase: go to Phase 4.6 if `review_rounds` = 1 and `recheck:` is `not run`, else to checkpoint 2. A change requested at checkpoint 2 is verified but not reviewed.
+The full review runs once per run. If `review` in `state.md` is not `not run`, skip this phase: go to Phase 4.6 if `review_rounds` = 1 and `recheck` is `not run`, else to checkpoint 2. A change requested at checkpoint 2 is verified but not reviewed.
 
-1. Set `phase: review`. Run **snapshot** and record the hash as `review_tree` in `state.md`. Build the diff without reading it. Tracked changes first, with `:(exclude)<path>` pathspecs for `preexisting_dirty`:
-   `git --no-pager diff <base_branch> -- . > .software-factory/runs/<id>/review.diff`
-   Then, for every untracked file (`??` lines of `git --no-pager status --porcelain -uall`, not `preexisting_dirty`), one command per file (exit code 1 only means "differs"):
-   `git --no-pager diff --no-index /dev/null <file> >> .software-factory/runs/<id>/review.diff`
-2. Run the reviewer. Validate `review.md`. Record `review:` in `state.md`.
-3. `APPROVE`: set `phase: checkpoint-2`. `CHANGES`: route by the failure table. Findings that stay unfixed (a DEVIATION the user waved through, or a cap) go to checkpoint 2.
+1. Set `phase=review`. Run `review-diff <id>`.
+2. Run the reviewer. Validate `review.md`. Set `review` (`approve`, or `changes (<b> blocker, <m> major)`).
+3. `APPROVE`: set `phase=checkpoint-2`. `CHANGES`: route by the failure table. Findings that stay unfixed (a DEVIATION the user waved through, or a cap) go to checkpoint 2.
 
 ## Phase 4.6 — Recheck
 
 Runs once, after a review fix passed the gates and verify.
 
-1. Set `phase: recheck`. Run **snapshot** to get the new tree. Write the fix diff without reading it:
-   `git --no-pager diff <review_tree> <new_tree> > .software-factory/runs/<id>/recheck.diff`
-2. Run the reviewer with `mode: recheck`. Validate `recheck.md`. Record `recheck:` in `state.md`.
-3. Set `phase: checkpoint-2`. A `CHANGES` verdict starts no fix. The `open` and `new` rows go to checkpoint 2.
+1. Set `phase=recheck`. Run `recheck-diff <id>`.
+2. Run the reviewer with `mode: recheck`. Validate `recheck.md`. Set `recheck` (`approve`, or `changes (<o> open, <n> new)`).
+3. Set `phase=checkpoint-2`. A `CHANGES` verdict starts no fix. The `open` and `new` rows go to checkpoint 2.
 
 ## Checkpoint 2 — Change approval
 
@@ -252,12 +223,12 @@ Show:
 3. Review result: verdict, number of blocker/major findings fixed, open findings (rows; one-line count of minors; `review.md` path). If the recheck ran: its verdict, the `open` and `new` blocker/major rows, and the `recheck.md` path.
 4. **Adaptations** from `impl-report.md`, and each amendment with a one-line cause.
 5. Draft commit message. Subject from `## Git` of the plan, ≤72 chars, with the ticket key if any. Body: what and why, 2-4 lines.
-6. Token total (`subagent_tokens`), one line. Hint: the user can inspect the full diff with `git diff`.
+6. The one line from `report <id> --short`. Hint: the user can inspect the full diff with `git diff`.
 
 Ask with AskUserQuestion:
 - **Commit, push and open PR**
 - **Commit only (local):** no push.
-- **Leave as is:** keep the changes uncommitted on `branch`. Set `phase: done`. Report branch, paths and run dir. Show the usage report. Stop.
+- **Leave as is:** keep the changes uncommitted on `branch`. Set `phase=done`. Report branch, paths and run dir. Show the usage report. Stop.
 - **Abort (discard):** see **Discard**.
 
 Free text ("Other") is **Request changes**:
@@ -269,43 +240,41 @@ Free text ("Other") is **Request changes**:
 1. Paths = checkpoint 2 status paths, not `preexisting_dirty`. Ask with AskUserQuestion: **Discard changes** / **Back**. Show the paths.
 2. Tracked: `git restore --source=HEAD --staged --worktree -- <paths>`. Untracked: `rm -- <paths>`. No `git clean`, no `reset --hard`, no directories.
 3. `git switch <base_branch>`, then `git branch -d <branch>`. On failure keep the branch and say so.
-4. Set `phase: aborted`. Keep the run dir. Show the usage report. Stop.
+4. Set `phase=aborted`. Keep the run dir. Show the usage report. Stop.
 
 ## Phase 5 — Commit / PR
 
-0. **Full suite.** If the user chose to push, `full_cmd` is not `-` and differs from `verify_cmd`: run-logged `full_cmd` into `full.log`, log usage as `full`, record `last_full:`. On failure or timeout show the tail and ask: **Fix** (implementer `fix` with the `full.log` path, then gates, verify, checkpoint 2) / **Push anyway** / **Commit only**.
-1. Set `phase: commit`. Stage exactly the paths shown at checkpoint 2 (never `preexisting_dirty`). Use explicit paths: `git add <paths>`, never `-A` or a directory. Commit with the approved message.
+0. **Full suite.** If the user chose to push: run `run <id> full`. On `skipped` (no separate full command) continue. On failure or timeout show the tail and ask: **Fix** (implementer `fix` with the `full.log` path, then gates, verify, checkpoint 2) / **Push anyway** / **Commit only**.
+1. Set `phase=commit`. Stage exactly the paths shown at checkpoint 2 (never `preexisting_dirty`). Use explicit paths: `git add <paths>`, never `-A` or a directory. Commit with the approved message.
 2. If push was chosen: `git push -u origin <branch>`. Open the PR against `base_branch` with the first option that works:
    1. a skill or MCP tool of this session that creates PRs for this host;
    2. `gh pr create` (GitHub remote, `gh` installed) or `glab mr create` (GitLab remote, `glab` installed);
    3. print the compare/new-PR URL of the host.
 
    PR title = commit subject. PR body: goal; acceptance criteria as a checklist; test cases added; verify result; the line `Reviewed: <verdict>, <n> findings fixed, recheck: <verdict | not run>` (n = `fixed` rows in `recheck.md`, else 0); ticket key or link.
-3. Set `phase: done`. Report branch, commit SHA and PR URL in 3-5 lines. Show the usage report.
+3. Set `phase=done`. Report branch, commit SHA and PR URL in 3-5 lines. Show the usage report.
 
-## `state.md` format
+## `state.md` fields
 
-Write it once in Phase 0. After that, update only the changed fields with Edit, on every phase change and after every subagent return (and before every checkpoint).
+`init` writes `state.md`. Change it only with `state`. Fields:
 
 ```markdown
-# Factory run <id>
-- input: <ticket key or first line of task>
+- input: <first line of the task>
 - phase: explore | refresh | plan | checkpoint-1 | implement | verify | review | recheck | checkpoint-2 | commit | done | aborted
-- base_branch: <name or ->
-- branch: <name or ->
-- verify_cmd: `<command>` | none
-- lint_cmd: `<command>` | -
-- full_cmd: `<command>` | -
+- base_branch / branch: <name or ->
+- verify_cmd / lint_cmd / full_cmd: `<command>` | none (verify) | - (lint, full)
 - baseline: green | red | not run
-- preexisting_dirty: <paths or ->
+- preexisting_dirty: <comma-separated paths or ->
 - counters: amendments=<0-2> verify_failures=<n> review_rounds=<0-1>
-- gates: <pass | fail | not run>
+- gates: pass | fail | not run
 - last_verify: <pass 42s | fail | timeout | not run>
 - last_full: <pass | fail | timeout | not run>
 - review: <approve | changes (<b> blocker, <m> major) | not run>
 - review_tree: <tree hash | ->
 - recheck: <approve | changes (<o> open, <n> new) | not run>
-- subagent_tokens: <running sum from usage.md>
-- updated: <ISO timestamp>
+- subagent_tokens, subagent_duration: <running sums; the script updates them>
+- updated: <ISO timestamp; the script sets it>
 - note: <one line: what happens next>
 ```
+
+Set `note` before every checkpoint.

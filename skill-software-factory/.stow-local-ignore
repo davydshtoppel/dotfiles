@@ -1,0 +1,8 @@
+# Replaces the stow default ignore list: keep the defaults that matter and skip the test folder.
+\.git
+\.gitignore
+\.gitmodules
+^/README.*
+^/LICENSE.*
+^/COPYING
+^/tests

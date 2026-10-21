@@ -86,10 +86,11 @@ Scope change: yes | no   (yes if goal, acceptance criteria or a public API chang
 <what the plan assumed vs what the code has / what the failure shows>
 
 ## Changes to the plan
-- replace step <k>: <new instruction, with exact signatures>
-- add step <k'>: ...
+- replace step <k> — <path> (new | modify | delete): <new instruction, with exact signatures>
+- add step <k'> — <path> (new | modify | delete): ...
 (list every step the implementer must apply again; steps not listed stay as they are)
-- test cases: <added/changed rows>
+(keep the form `— <path> (<kind>)` exactly, with one kind: a script reads it)
+- test cases: <added/changed rows>, in the table form of `plan.md` (`| # | AC | file :: name | Given | When | Then |`)
 
 ## Verify
 <unchanged | new command and why>
