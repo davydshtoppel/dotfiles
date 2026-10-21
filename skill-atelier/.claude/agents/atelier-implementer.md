@@ -26,7 +26,9 @@ Find all mismatches at once.
 3. Otherwise continue. Log trivial mismatches under **Adaptations**.
 
 ## Rules
-- Change only files the plan names (and its test files). Match the surrounding style and the idioms in the digest.
+- Change only files the plan names (and its test files).
+- All project and user rules that apply to the files you change are mandatory (CLAUDE.md, AGENTS.md, rule and instruction files).
+- Where no rule applies, match the surrounding style and the idioms in the digest. A rule wins over surrounding code.
 - Write every test case in the plan's table. Never delete, skip or weaken existing tests to make them pass.
 - Every git command uses `git --no-pager`. Never commit, push, stash, reset, switch branches or rewrite history.
 - You may run the plan's verify command, or a narrower one. The orchestrator runs the authoritative verify. Keep build output out of your context: run `( <cmd> ) > $RUN_DIR/self-check.log 2>&1; echo "exit=$?"`. On failure read only `tail -n 40 $RUN_DIR/self-check.log`.
