@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-KEYS=" input phase base_branch branch verify_cmd lint_cmd full_cmd baseline preexisting_dirty counters gates last_verify last_full review review_tree recheck subagent_tokens subagent_duration updated note "
+KEYS=" input phase verify_cmd lint_cmd full_cmd baseline preexisting_dirty counters gates last_verify last_full review review_tree recheck subagent_tokens subagent_duration updated note "
 # Regexes (awk ERE) for the weakened-test gate.
 MARK='@(Test|ParameterizedTest|RepeatedTest|TestFactory)([^A-Za-z]|$)|assert[A-Za-z]*[ (]|expect[ ]*\(|(^|[^A-Za-z_.])(it|test|describe)[ ]*\(|def test_|func Test|verify\(|should[A-Za-z]*\('
 SKIP='@Disabled|@Ignore|\.skip\(|xit\(|xdescribe\(|@pytest\.mark\.skip|t\.Skip\('
@@ -121,8 +121,6 @@ cmd_init() { # input...
 # Atelier run $id
 - input: $first
 - phase: explore
-- base_branch: -
-- branch: -
 - verify_cmd: none
 - lint_cmd: -
 - full_cmd: -
@@ -243,9 +241,9 @@ cmd_validate() { # file agent
   if [ -z "$file" ] || [ -z "$agent" ]; then die "validate needs: file agent"; fi
   case "$file" in
     digest.md)
-      cap=150; heads="## Git|## Verify"
+      cap=150; heads="## Verify"
       if [ "$(state_get phase)" = refresh ]; then heads="$heads|## Corrections"; fi ;;
-    plan.md) cap=200; heads="## Steps|## Verify|## Git" ;;
+    plan.md) cap=200; heads="## Steps|## Verify" ;;
     plan-amendment-*.md) cap=80; heads="## Changes to the plan|Scope change:" ;;
     impl-report.md) cap=60; heads="Status:" ;;
     review.md) cap=60; heads="Verdict:|## Findings" ;;
@@ -385,9 +383,7 @@ weak_scan() { # file base -> "removed added skip_added"
 }
 
 cmd_gates() {
-  local base allowed modify deletes tests f name p scope=0 tmiss=0 weak=0 a r ad sk
-  base=$(state_get base_branch)
-  if [ -z "$base" ] || [ "$base" = - ]; then die "base_branch is not set in state.md"; fi
+  local base=HEAD allowed modify deletes tests f name p scope=0 tmiss=0 weak=0 a r ad sk
   allowed="$RD/.gates.allowed"; modify="$RD/.gates.modify"; deletes="$RD/.gates.delete"; tests="$RD/.gates.tests"
   : > "$allowed"; : > "$modify"; : > "$deletes"; : > "$tests"
   for f in "$RD/plan.md" $(amend_files); do
@@ -480,9 +476,7 @@ snapshot_tree() {
 }
 
 cmd_review_diff() {
-  local base tree out="$RD/review.diff" dirty p
-  base=$(state_get base_branch)
-  if [ -z "$base" ] || [ "$base" = - ]; then die "base_branch is not set in state.md"; fi
+  local base=HEAD tree out="$RD/review.diff" dirty p
   tree=$(snapshot_tree)
   state_put review_tree "$tree"
   build_excl

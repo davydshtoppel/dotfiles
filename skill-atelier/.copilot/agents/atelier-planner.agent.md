@@ -66,9 +66,6 @@ Type: feature | fix | refactor | chore
 Full: `<command>` (from the digest, or `-` if the same as above).
 Lint: `<command>` (from the digest, or `-`).
 
-## Git
-- branch: `<name following the digest's branch naming, ticket key included>`
-- commit subject: `<draft in the digest's commit style, ≤72 chars>`
 
 ## Out of scope
 - <explicitly not done>

@@ -1,7 +1,7 @@
 ---
 name: atelier
-description: 'Atelier: Opus-level code quality for fewer tokens (strong models plan and review, cheaper models explore and implement). Drives a JIRA ticket or a free-text task through explore → plan → your approval → implement → verify → review → your approval → commit/PR, using the atelier-explorer, atelier-planner, atelier-implementer and atelier-reviewer subagents.'
-argument-hint: '<JIRA-KEY | task description> | resume [run-id]'
+description: 'Atelier: Opus-level code quality for fewer tokens (strong models plan and review, cheaper models explore and implement). Drives any coding task through explore → plan → your approval → implement → verify → review → your approval, using the atelier-explorer, atelier-planner, atelier-implementer and atelier-reviewer subagents.'
+argument-hint: '<task description> | resume [run-id]'
 model: ['claude-sonnet-5.5', 'Claude Sonnet 5.5 (copilot)', 'GPT-5.4 (copilot)']
 agents: ['atelier-explorer', 'atelier-planner', 'atelier-implementer', 'atelier-reviewer']
 disable-model-invocation: true
@@ -37,7 +37,7 @@ The agent name is `atelier-<name>`. "Run" a subagent means start it as a **subag
 
 **Git**
 - Every git command uses `git --no-pager`.
-- No commit, push or PR before checkpoint 2 approval.
+- Never create a branch, commit, push or open a PR. The user or another skill does that.
 - Never discard user changes (`reset --hard`, `checkout -- .`, `clean`).
 
 **Checkpoints (asking the user)**
@@ -54,9 +54,9 @@ The user's message is `INPUT`.
 
 | Input | Action |
 |---|---|
-| empty | Print `<JIRA-KEY \| task description>` or `resume [run-id]`. Stop. |
+| empty | Print `<task description>` or `resume [run-id]`. Stop. |
 | `resume` | List `.atelier/runs/*/state.md` (id, phase, updated). Stop. |
-| `resume <id>` | Read its `state.md`. If `branch` is set and differs from `git --no-pager branch --show-current`, ask: switch back / abort. Then continue at `phase`: checkpoint = show it again; `refresh` = run **refresh digest** again, then Phase 2; `implement` = task `resume` if `impl-report.md` exists, else `implement`; `verify` = run verify again; `review` = run Phase 4.5 again; `recheck` = run Phase 4.6 (if `review_tree` is `-`, go to checkpoint 2); `commit` = check `git --no-pager log -1` before you commit again. |
+| `resume <id>` | Read its `state.md`. Continue at `phase`: checkpoint = show it again; `refresh` = run **refresh digest** again, then Phase 2; `implement` = task `resume` if `impl-report.md` exists, else `implement`; `verify` = run verify again; `review` = run Phase 4.5 again; `recheck` = run Phase 4.6 (if `review_tree` is `-`, go to checkpoint 2). |
 | other | New run. |
 
 ## The script
@@ -134,19 +134,12 @@ The script adds the duration and keeps `subagent_tokens` and `subagent_duration`
 ## Phase 0 — Intake
 
 0. **Preflight.** Check that this session has a tool to start a named custom agent as a subagent. Run `atelier help`. If either is missing, stop before you write any file. For the subagent tool, tell the user: VS Code = enable the `agent` tool for this agent and the setting `chat.customAgentInSubagent.enabled`; IntelliJ = update the Copilot plugin; Copilot CLI = start with `/agent atelier`. For the script, tell the user: `stow --no-folding -t ~ skill-atelier` and put `~/.local/bin` on `PATH`. Do not continue.
-1. **Repo.** `git --no-pager rev-parse --show-toplevel` must succeed. If not, stop: the atelier needs a git repo. Work from the repo root.
+1. **Repo.** `git --no-pager rev-parse --show-toplevel` and `git --no-pager rev-parse --verify HEAD` must succeed. If not, stop before you write any file. Tell the user: the atelier needs a git repo with at least one commit, as the baseline for diffs and undo (`git init`, then a first commit). Work from the repo root.
 2. **Clean worktree.** If `git --no-pager status --porcelain` shows changes, ask: **Abort (Recommended)** / **Continue anyway**. On continue, keep the paths (comma-separated). After step 5, set them as `preexisting_dirty`. Never stage or commit them.
-3. **Task source.**
-   - If `INPUT` starts with a token matching `^[A-Z][A-Z0-9]+-[0-9]+$` (extra notes may follow), it may be a ticket key. Try to fetch it with a skill or MCP tool of this session that reads JIRA issues (name contains `jira` or `atlassian`). Collect summary, description, acceptance criteria and, if relevant, linked subtasks and comments.
-   - If no tool exists or the fetch fails, ask: ticket (user pastes the text) or free text (use `INPUT` as the task).
-   - Otherwise `INPUT` is the task text.
-4. **Run id.** The ticket key. For free text: kebab-case slug of the first ~5 meaningful words + `-MMDD`. If `.atelier/runs/<id>` exists, ask: resume it, or start a new run as `<id>-2`.
-5. **Run dir.** Run `init <id> "<first line of the task>"`. Write `task.md` (the ticket or task text, verbatim). Then set `preexisting_dirty` if you kept paths.
-6. **Base branch.**
-   - Default branch: `git --no-pager symbolic-ref --short refs/remotes/origin/HEAD` without the `origin/` prefix; else `main` or `master`, whichever exists.
-   - If HEAD is detached, or the current branch is not the default, ask: default branch (recommended) / current branch / abort.
-   - Set `base_branch`. If it is behind its upstream (`git --no-pager rev-list --count <base_branch>..<base_branch>@{u}` > 0), warn the user. Do not fetch without asking.
-7. **State.** Set `phase=explore`.
+3. **Task.** `INPUT` is the task text.
+4. **Run id.** Kebab-case slug of the first ~5 meaningful words + `-MMDD`. If `.atelier/runs/<id>` exists, ask: resume it, or start a new run as `<id>-2`.
+5. **Run dir.** Run `init <id> "<first line of the task>"`. Write `task.md` (the task text, verbatim). Then set `preexisting_dirty` if you kept paths.
+6. **State.** Set `phase=explore`.
 
 ## Phase 1 — Explore
 
@@ -177,13 +170,12 @@ Ask:
 - **Abort:** `phase=aborted`, show the usage report, stop. Keep the run dir.
 
 On approval:
-1. Create the branch named in `## Git` of `plan.md`: `git switch -c <branch> <base_branch>`. Set `branch`.
-2. **Baseline.** Run `run <id> baseline`. It runs the verify command without lint, leaves failure counters alone and sets `baseline`.
+1. **Baseline.** Run `run <id> baseline`. It runs the verify command without lint, leaves failure counters alone and sets `baseline`.
    - `skipped`: `baseline` stays `not run`.
    - Fail or timeout: show the tail. Ask **Continue** (`baseline` is `red`) / **Abort**.
    - Pass: `baseline` is `green`.
    - With a red baseline, a Phase 4 failure is pre-existing if `preexisting <id>` exits 0. Do not count it. List it at checkpoint 2.
-3. Set `phase=implement`.
+2. Set `phase=implement`.
 
 ## Phase 3 — Implement
 
@@ -225,16 +217,13 @@ Runs once, after a review fix passed the gates and verify.
 
 Show:
 1. `git --no-pager status --porcelain -uall` (not `preexisting_dirty`) and `git --no-pager diff --stat`.
-2. Gate result and verify result: pass with duration, `not run (none)`, or `accepted unverified`. List pre-existing baseline failures. If `full_cmd` differs from `verify_cmd`, say that only the narrow command ran and the full command runs before a push.
+2. Gate result and verify result: pass with duration, `not run (none)`, or `accepted unverified`. List pre-existing baseline failures. If `full_cmd` differs from `verify_cmd`, say that only the narrow command ran and the full command runs when you accept.
 3. Review result: verdict, number of blocker/major findings fixed, open findings (rows; one-line count of minors; `review.md` path). If the recheck ran: its verdict, the `open` and `new` blocker/major rows, and the `recheck.md` path.
 4. **Adaptations** from `impl-report.md`, and each amendment with a one-line cause.
-5. Draft commit message. Subject from `## Git` of the plan, ≤72 chars, with the ticket key if any. Body: what and why, 2-4 lines.
-6. The one line from `report <id> --short`. Hint: the user can inspect the full diff with `git diff`.
+5. The one line from `report <id> --short`. Hint: the user can inspect the full diff with `git diff`.
 
 Ask:
-- **Commit, push and open PR**
-- **Commit only (local):** no push.
-- **Leave as is:** keep the changes uncommitted on `branch`. Set `phase=done`. Report branch, paths and run dir. Show the usage report. Stop.
+- **Accept:** see Phase 5.
 - **Abort (discard):** see **Discard**.
 
 Free text ("Other") is **Request changes**:
@@ -245,20 +234,12 @@ Free text ("Other") is **Request changes**:
 **Discard.**
 1. Paths = checkpoint 2 status paths, not `preexisting_dirty`. Ask: **Discard changes** / **Back**. Show the paths.
 2. Tracked: `git restore --source=HEAD --staged --worktree -- <paths>`. Untracked: `rm -- <paths>`. No `git clean`, no `reset --hard`, no directories.
-3. `git switch <base_branch>`, then `git branch -d <branch>`. On failure keep the branch and say so.
-4. Set `phase=aborted`. Keep the run dir. Show the usage report. Stop.
+3. Set `phase=aborted`. Keep the run dir. Show the usage report. Stop.
 
-## Phase 5 — Commit / PR
+## Phase 5 — Accept
 
-0. **Full suite.** If the user chose to push: run `run <id> full`. On `skipped` (no separate full command) continue. On failure or timeout show the tail and ask: **Fix** (implementer `fix` with the `full.log` path, then gates, verify, checkpoint 2) / **Push anyway** / **Commit only**.
-1. Set `phase=commit`. Stage exactly the paths shown at checkpoint 2 (never `preexisting_dirty`). Use explicit paths: `git add <paths>`, never `-A` or a directory. Commit with the approved message.
-2. If push was chosen: `git push -u origin <branch>`. Open the PR against `base_branch` with the first option that works:
-   1. a skill or MCP tool of this session that creates PRs for this host;
-   2. `gh pr create` (GitHub remote, `gh` installed) or `glab mr create` (GitLab remote, `glab` installed);
-   3. print the compare/new-PR URL of the host.
-
-   PR title = commit subject. PR body: goal; acceptance criteria as a checklist; test cases added; verify result; the line `Reviewed: <verdict>, <n> findings fixed, recheck: <verdict | not run>` (n = `fixed` rows in `recheck.md`, else 0); ticket key or link.
-3. Set `phase=done`. Report branch, commit SHA and PR URL in 3-5 lines. Show the usage report.
+0. **Full suite.** Run `run <id> full`. On `skipped` (no separate full command) continue. On failure or timeout show the tail and ask: **Fix** (implementer `fix` with the `full.log` path, then gates, verify, checkpoint 2) / **Accept anyway**.
+1. Set `phase=done`. Report the changed paths and the run dir in 3-5 lines. Show the usage report. The changes stay uncommitted in the worktree. Branch, commit and PR are not part of the atelier.
 
 ## `state.md` fields
 
@@ -266,8 +247,7 @@ Free text ("Other") is **Request changes**:
 
 ```markdown
 - input: <first line of the task>
-- phase: explore | refresh | plan | checkpoint-1 | implement | verify | review | recheck | checkpoint-2 | commit | done | aborted
-- base_branch / branch: <name or ->
+- phase: explore | refresh | plan | checkpoint-1 | implement | verify | review | recheck | checkpoint-2 | done | aborted
 - verify_cmd / lint_cmd / full_cmd: `<command>` | none (verify) | - (lint, full)
 - baseline: green | red | not run
 - preexisting_dirty: <comma-separated paths or ->

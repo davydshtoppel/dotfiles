@@ -52,7 +52,7 @@ check "no run dir" 2 '^error:' "$SF" state nope get phase
 check "init" 0 '^result=ok' "$SF" init "$ID" "T-1 add baz"
 check "init twice" 1 '^result=exists' "$SF" init "$ID" "T-1 add baz"
 grep -qxF '.atelier/' .git/info/exclude && pass=$((pass + 1)) || { fail=$((fail + 1)); echo "FAIL exclude"; }
-check "state set" 0 '^$' "$SF" state "$ID" phase=plan base_branch=main 'verify_cmd=true' 'lint_cmd=-' 'note=a=b'
+check "state set" 0 '^$' "$SF" state "$ID" phase=plan 'verify_cmd=true' 'lint_cmd=-' 'note=a=b'
 check "state get" 0 '^plan$' "$SF" state "$ID" get phase
 check "state get cmd" 0 '^true$' "$SF" state "$ID" get verify_cmd
 check "state get note" 0 '^a=b$' "$SF" state "$ID" get note
@@ -94,15 +94,12 @@ Add baz.
 
 ## Verify
 `true`
-
-## Git
-- branch: `feat/T-1`
 EOF
 check "validate plan fails (no digest row)" 1 '^result=invalid' "$SF" validate "$ID" plan.md atelier-writer
 check "validate plan" 0 '^result=ok file=plan.md' "$SF" validate "$ID" plan.md atelier-planner
 printf '# x\n' > $RUN/digest.md
 check "validate digest" 1 '^result=invalid' "$SF" validate "$ID" digest.md atelier-planner
-has "validate digest heading" "lacks '## Git'"
+has "validate digest heading" "lacks '## Verify'"
 grep -qE '^\| 2 \| plan \| atelier-planner \| plan \| invalid ' $RUN/usage.md && pass=$((pass + 1)) || { fail=$((fail + 1)); echo "FAIL validate did not mark the row invalid"; }
 
 # plan gate: AC 2 is covered; signature baz is missing in Foo.java (warning); Baz.java does not exist (ok)
@@ -130,7 +127,6 @@ check "plan-gate amendment" 1 '^result=miss misses=1' "$SF" plan-gate "$ID" --am
 rm $RUN/plan-amendment-1.md
 
 # gates: change an allowed file and an out-of-scope file
-git switch -q -c feat/T-1
 printf 'class Foo {\n  int bar() { return 1; }\n  int baz(String s) { return 2; }\n}\n' > src/Foo.java
 printf 'class FooTest {\n  @Test void whenX_thenY() { assertThat(1).isEqualTo(1); }\n  @Test void whenNull_thenThrow() { }\n}\n' > src/FooTest.java
 check "gates pass" 0 '^result=pass scope=0 tests=0 weakened=0' "$SF" gates "$ID"
