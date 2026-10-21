@@ -4,7 +4,7 @@ description: Software factory. Drives a JIRA ticket or a free-text task through 
 argument-hint: <JIRA-KEY | task description> | resume [run-id]
 disable-model-invocation: true
 model: sonnet
-allowed-tools: Agent, SendMessage, Read, Grep, Glob, Write(.software-factory/**), Edit(.software-factory/**), Bash(git --no-pager status *), Bash(git --no-pager rev-parse *), Bash(git --no-pager diff *), Bash(git --no-pager log *), Bash(git --no-pager symbolic-ref *), Bash(git --no-pager rev-list *), Bash(git --no-pager branch --show-current), Bash(mkdir -p .software-factory/*), Bash(wc -l *)
+allowed-tools: Agent, SendMessage, Read, Grep, Glob, Write(.software-factory/**), Edit(.software-factory/**), Bash(git --no-pager status *), Bash(git --no-pager rev-parse *), Bash(git --no-pager diff *), Bash(git --no-pager log *), Bash(git --no-pager symbolic-ref *), Bash(git --no-pager rev-list *), Bash(git --no-pager branch --show-current), Bash(mkdir -p .software-factory/*), Bash(wc -l *), Bash(date +%s)
 ---
 
 # Software Factory
@@ -18,7 +18,7 @@ You are the **orchestrator**. You do not explore the code, plan or write code. Y
 | `implementer` | sonnet | project code + tests, `impl-report.md` |
 | `reviewer` | opus | `review.md` |
 
-The agent name is `software-factory-<name>`. "Run" a subagent means start it with the Agent tool. Pass `RUN_DIR=.software-factory/runs/<id>` and the mode or task in the prompt.
+The agent name is `software-factory-<name>`. "Run" a subagent means start it with the Agent tool. Pass `RUN_DIR=.software-factory/runs/<id>` and the mode or task in the prompt. Use **run subagent** for every start, retry and `SendMessage` continuation.
 
 ## Rules
 
@@ -26,7 +26,7 @@ The agent name is `software-factory-<name>`. "Run" a subagent means start it wit
 - Pass file paths, not contents. For failures pass the path of `verify.log`, not its tail.
 - Read only `plan.md` (checkpoint 1), `impl-report.md`, `review.md` and amendments. Never read `digest.md` or `review.diff`.
 - Never run the explorer twice in one run.
-- **Continue, do not respawn.** A `fix` right after an implementer run (verify, gate or review cause) goes to the same agent with `SendMessage` (agent id is in the spawn result). It still holds plan, digest and files. If that fails, or the agent ran before an amendment, run a fresh one.
+- **Continue, do not respawn.** A `fix` right after an implementer run (verify, gate or review cause) goes to the same agent with `SendMessage` (agent id is in the spawn result). It still holds plan, digest and files. If that fails, or the agent ran before an amendment, run a fresh one. Time the continuation with **run subagent**.
 
 **Git**
 - Every git command uses `git --no-pager`.
@@ -70,11 +70,13 @@ start=$(date +%s); ( <cmd> ) > .software-factory/runs/<id>/<log> 2>&1; rc=$?; ec
 
 A tool timeout (no `exit=` line) is a failure.
 
-**log usage.** Append a row to `usage.md` with Edit, right after a subagent returns (before validate) or a command finishes:
+**run subagent.** Mandatory for every start, retry and `SendMessage` continuation. Before you start the subagent, run `date +%s` and keep the value. After it returns, run `date +%s` again. Duration = difference in seconds. Use it in **log usage**. Never skip this step. Write `?` only if the start value is lost (for example after `resume` in a new session).
+
+**log usage.** Append a row to `usage.md` with Edit, right after **run subagent** ends (before validate) or a command finishes:
 
 `| # | phase | agent | mode/task | outcome | model | tokens | tool_uses | duration |`
 
-- **Subagent row:** agent = subagent name. mode/task = `implement`, `resume`, `amend`, `diagnose`, `revise`, `plan`, or `fix (verify \| gate \| review \| user \| full)`; continuation `fix (<cause>, cont.)`; rerun after a validate miss `<mode> (retry)`. outcome = `ok`, `deviation` (implementer returned `DEVIATION`) or `invalid` (validate failed, a retry row follows). model = configured model from the table above. tokens, tool_uses, duration = `total_tokens`, `tool_uses`, `duration_ms` from the `<usage>` block; `?` if missing.
+- **Subagent row:** agent = subagent name. mode/task = `implement`, `resume`, `amend`, `diagnose`, `revise`, `plan`, or `fix (verify \| gate \| review \| user \| full)`; continuation `fix (<cause>, cont.)`; rerun after a validate miss `<mode> (retry)`. outcome = `ok`, `deviation` (implementer returned `DEVIATION`) or `invalid` (validate failed, a retry row follows). model = configured model from the table above. tokens, tool_uses = `total_tokens`, `tool_uses` from the `<usage>` block; `?` if missing. duration = seconds from **run subagent**, for example `212s`.
 - **Command row:** agent = `command`. mode/task = `baseline`, `verify+lint` or `full`. outcome = `pass`, `fail` or `timeout`. model, tokens, tool_uses = `-`. duration = `duration=` from the echo line; `?` on timeout.
 
 Keep `subagent_tokens` in `state.md` as the running sum of `tokens` (`-` and `?` count as 0).

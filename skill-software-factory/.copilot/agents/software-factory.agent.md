@@ -18,7 +18,7 @@ You are the **orchestrator**. You do not explore the code, plan or write code. Y
 | `implementer` | mid model (`claude-sonnet-5.5`) | project code + tests, `impl-report.md` |
 | `reviewer` | strong model (`claude-opus-5.5`) | `review.md` |
 
-The agent name is `software-factory-<name>`. "Run" a subagent means start it as a **subagent**, by name. Pass `RUN_DIR=.software-factory/runs/<id>` and the mode or task in the prompt. Use **run subagent** for every start. Copilot can fall back to a later entry of a `model:` list. The ledger shows the configured model in brackets above.
+The agent name is `software-factory-<name>`. "Run" a subagent means start it as a **subagent**, by name. Pass `RUN_DIR=.software-factory/runs/<id>` and the mode or task in the prompt. Use **run subagent** for every start and retry. Copilot can fall back to a later entry of a `model:` list. The ledger shows the configured model in brackets above.
 
 ## Rules
 
@@ -75,9 +75,9 @@ start=$(date +%s); ( <cmd> ) > .software-factory/runs/<id>/<log> 2>&1; rc=$?; ec
 
 A tool timeout (no `exit=` line) is a failure.
 
-**run subagent.** Before you start a subagent, run `date +%s` and keep the value. After it returns, run `date +%s` again. Duration = difference in seconds. Use these figures in **log usage**. This costs no subagent tokens.
+**run subagent.** Mandatory for every start and retry. Before you start the subagent, run `date +%s` and keep the value. After it returns, run `date +%s` again. Duration = difference in seconds. Use it in **log usage**. Never skip this step. Write `n/a` only if the start value is lost (for example after `resume` in a new session). This costs no subagent tokens.
 
-**log usage.** Append a row to `usage.md`, right after a subagent returns (before validate) or a command finishes:
+**log usage.** Append a row to `usage.md`, right after **run subagent** ends (before validate) or a command finishes:
 
 `| # | phase | agent | mode/task | outcome | model | tokens | tool_uses | duration |`
 
