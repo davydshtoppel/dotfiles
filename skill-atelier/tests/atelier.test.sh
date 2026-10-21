@@ -97,6 +97,8 @@ Add baz.
 EOF
 check "validate plan fails (no digest row)" 1 '^result=invalid' "$SF" validate "$ID" plan.md atelier-writer
 check "validate plan" 0 '^result=ok file=plan.md' "$SF" validate "$ID" plan.md atelier-planner
+check "validate plan again (no new row)" 1 '^result=invalid' "$SF" validate "$ID" plan.md atelier-planner
+has "validate again text" 'no new usage.md row'
 printf '# x\n' > $RUN/digest.md
 check "validate digest" 1 '^result=invalid' "$SF" validate "$ID" digest.md atelier-planner
 has "validate digest heading" "lacks '## Verify'"
@@ -104,6 +106,11 @@ grep -qE '^\| 2 \| plan \| atelier-planner \| plan \| invalid ' $RUN/usage.md &&
 
 # plan gate: AC 2 is covered; signature baz is missing in Foo.java (warning); Baz.java does not exist (ok)
 check "plan-gate" 0 '^result=ok misses=0 warnings=1' "$SF" plan-gate "$ID"
+check "plan-gate sets verify" 0 'verify=true full=- lint=-' "$SF" plan-gate "$ID"
+printf 'Full: `mvn -q verify`\nLint: `mvn -q spotless:check`\n' >> $RUN/plan.md
+check "plan-gate sets full+lint" 0 'full=mvn -q verify lint=mvn -q spotless:check' "$SF" plan-gate "$ID"
+check "state full_cmd" 0 '^mvn -q verify$' "$SF" state "$ID" get full_cmd
+sed -i.bak '/^Full:/d;/^Lint:/d' $RUN/plan.md
 sed -i.bak 's/^| 2 | 2 |/| 2 | 1 |/' $RUN/plan.md
 check "plan-gate AC miss" 1 '^result=miss misses=1' "$SF" plan-gate "$ID"
 has "plan-gate AC text" 'AC 2 has no test case'
@@ -140,6 +147,11 @@ check "gates skip marker" 1 'weakened=[1-9]' "$SF" gates "$ID"
 printf 'class FooTest {\n  @Test void whenNull_thenThrow() { }\n}\n' > src/FooTest.java
 check "gates test missing" 1 'tests=1' "$SF" gates "$ID"
 printf 'class FooTest {\n  @Test void whenX_thenY() { assertThat(1).isEqualTo(1); }\n  @Test void whenNull_thenThrow() { }\n}\n' > src/FooTest.java
+
+# changed: modified, new tracked-by-HEAD check
+check "changed" 0 '^changed=2$' "$SF" changed "$ID"
+has "changed head" '^head src/Foo.java$'
+has "changed test file" '^head src/FooTest.java$'
 
 # review-diff / snapshot / recheck-diff
 printf 'new\n' > src/Baz.java
@@ -185,6 +197,14 @@ check "report" 0 '^\| agent \| spawns' "$SF" report "$ID"
 has "report counts" 'Counts: invalid=1 deviation=0 retry=0 amendments=1'
 has "report commands" 'verify\+lint #1 fail'
 has "report total" '^\| total \| 2 \| 1200 \|'
+
+# start + log with stored start; space-free modes in report
+"$SF" start "$ID" atelier-implementer
+check "log from start file" 0 '^row=[0-9]+ duration=[0-9]+s$' "$SF" log "$ID" implement atelier-implementer fix:verify ok sonnet 10 1 -
+check "start file removed" 1 '' test -e $RUN/.start.atelier-implementer
+"$SF" log "$ID" implement atelier-implementer fix:verify:retry ok sonnet 10 1 - > /dev/null
+check "report fix counts" 0 '^\| agent \| spawns' "$SF" report "$ID"
+has "report fix" 'retry=1 fix\(verify\)=2'
 
 echo "passed: $pass, failed: $fail"
 [ "$fail" -eq 0 ]

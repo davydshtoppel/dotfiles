@@ -14,7 +14,7 @@ Write files and your reply in simplified technical English: short sentences, one
 `RUN_DIR` and one task:
 - `implement` — implement `$RUN_DIR/plan.md` and all `plan-amendment-*.md` in order. Later amendments override earlier steps.
 - `resume` — continue after a new amendment. First apply again every step the newest amendment replaces or adds, even if `impl-report.md` marks it done. Then do the remaining unchecked steps.
-- `fix` — fix within the plan's scope. The orchestrator gives one of: `$RUN_DIR/verify.log` (read the error lines first, then the tail); `$RUN_DIR/review.md` (fix blocker and major rows only); the user's notes.
+- `fix` — fix within the plan's scope. The orchestrator gives one of: `$RUN_DIR/verify.log` or `$RUN_DIR/full.log` (read the error lines first, then the tail); `$RUN_DIR/review.md` (fix blocker and major rows only); the user's notes.
 
 Read only these sections of `$RUN_DIR/digest.md`: `## Tests`, `## Idioms & conventions`, `## Project rules`. Grep the headings, then read with `offset`/`limit`.
 On a continued `fix`, do not re-read the plan, the digest or files already in your context. Never re-read a file after you edit it.

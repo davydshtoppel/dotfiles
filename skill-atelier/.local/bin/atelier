@@ -26,6 +26,7 @@ Usage: atelier <subcommand> <run-id> [args]
   init <id> <input>        create the run dir, usage.md, state.md; exclude .atelier/
   state <id> k=v...        set state.md fields (counters accept +1); `state <id> get <key>`
   clock                    print epoch seconds
+  start <id> <agent>       store the start time of a subagent run; `log` reads it when start is -
   log <id> <phase> <agent> <mode> <outcome> <model> <tokens> <tool_uses> <start>
                            append a subagent row to usage.md
   run <id> <mode>          baseline | verify+lint | full: run the command from state.md
@@ -33,6 +34,7 @@ Usage: atelier <subcommand> <run-id> [args]
   amendments <id>          print amendments=<n> next=<N>; update counters
   plan-gate <id> [--amendment N]
   gates <id>               scope, tests present, no weakened tests
+  changed <id>             list changed paths (not preexisting_dirty) as `head|new <path>`
   preexisting <id>         compare verify.log errors with baseline.log
   snapshot <id>            print a tree hash of the worktree
   review-diff <id>         write review.diff, record review_tree
@@ -150,9 +152,16 @@ append_row() { # phase agent mode outcome model tokens tool_uses duration
   ROW=$n
 }
 
+cmd_start() { # agent
+  if [ -z "${1:-}" ]; then die "start needs: agent"; fi
+  date +%s > "$RD/.start.$1"
+}
+
 cmd_log() { # phase agent mode outcome model tokens tool_uses start
   if [ $# -ne 8 ]; then die "log needs: phase agent mode outcome model tokens tool_uses start"; fi
-  local phase=$1 agent=$2 mode=$3 outcome=$4 model=$5 tokens=$6 tools=$7 start=$8 dur="?"
+  local phase=$1 agent=$2 mode=$3 outcome=$4 model=$5 tokens=$6 tools=$7 start=$8 dur="?" sf="$RD/.start.$2"
+  case "$start" in ''|*[!0-9]*) if [ -f "$sf" ]; then start=$(cat "$sf"); fi ;; esac
+  rm -f "$sf"
   case "$start" in ''|*[!0-9]*) ;; *) dur="$(( $(date +%s) - start ))s" ;; esac
   append_row "$phase" "$agent" "$mode" "$outcome" "$model" "$tokens" "$tools" "$dur"
   case "$tokens" in
@@ -237,7 +246,7 @@ mark_invalid() { # agent: set the outcome of that agent's last row to invalid
 }
 
 cmd_validate() { # file agent
-  local file=${1:-} agent=${2:-} cap heads h lines oldifs norow=0
+  local file=${1:-} agent=${2:-} cap heads h lines oldifs norow=0 lastrow prev
   if [ -z "$file" ] || [ -z "$agent" ]; then die "validate needs: file agent"; fi
   case "$file" in
     digest.md)
@@ -250,8 +259,10 @@ cmd_validate() { # file agent
     recheck.md) cap=40; heads="Verdict:|## Findings" ;;
     *) die "validate: unknown file $file" ;;
   esac
-  if ! awk -F'|' -v a="$agent" '{ x = $4; gsub(/^ +| +$/, "", x) } x == a { f = 1 } END { exit !f }' "$RD/usage.md"; then
-    FAILED=1; norow=1; find_add "no usage.md row for $agent: the orchestrator must not write this file"
+  lastrow=$(awk -F'|' -v a="$agent" '/^\| *[0-9]/ { x = $4; gsub(/^ +| +$/, "", x); if (x == a) { n = $2; gsub(/ /, "", n); l = n } } END { print l + 0 }' "$RD/usage.md")
+  prev=$(awk -v f="$file" '$1 == f { p = $2 } END { print p + 0 }' "$RD/.validated" 2>/dev/null || echo 0)
+  if [ "$lastrow" -le "$prev" ]; then
+    FAILED=1; norow=1; find_add "no new usage.md row for $agent since the last check of $file: the orchestrator must not write this file"
   fi
   if [ ! -s "$RD/$file" ]; then
     FAILED=1; find_add "$file is missing or empty"
@@ -267,6 +278,10 @@ cmd_validate() { # file agent
   done
   IFS=$oldifs
   if [ "$FAILED" -eq 1 ] && [ "$norow" -eq 0 ]; then mark_invalid "$agent"; fi
+  if [ "$FAILED" -eq 0 ]; then
+    { grep -v "^$file " "$RD/.validated" 2>/dev/null || true; echo "$file $lastrow"; } > "$RD/.validated.tmp"
+    mv "$RD/.validated.tmp" "$RD/.validated"
+  fi
   finish "result=$([ "$FAILED" -eq 0 ] && echo ok || echo invalid) file=$file lines=$lines cap=$cap"
 }
 
@@ -323,8 +338,21 @@ sig_ident() { # signature text -> identifier
   printf '%s' "$s" | sed -E 's/[^A-Za-z0-9_$]+/ /g' | awk '{ print $NF }'
 }
 
+plan_cmd() { # plan.md label -> command text between the first backticks of the Verify line
+  awk -v lab="$2" '
+    /^## / { sec = ($0 ~ /^## Verify/); next }
+    sec && /^[ \t]*$/ { next }
+    sec {
+      line = $0
+      if (lab == "verify") { if (line ~ /^(Full|Lint):/) next } else if (index(line, lab ":") != 1) next
+      if (match(line, /`[^`]*`/)) { print substr(line, RSTART + 1, RLENGTH - 2); exit }
+      if (lab == "verify" && line ~ /^none/) { print "none"; exit }
+      if (lab != "verify") exit
+    }' "$1"
+}
+
 cmd_plan_gate() { # [--amendment N]
-  local src="$RD/plan.md" amend="" kind path sig ident misses=0 warns=0 line
+  local src="$RD/plan.md" amend="" kind path sig ident misses=0 warns=0 line v f l cmds=""
   if [ "${1:-}" = "--amendment" ]; then
     if [ -z "${2:-}" ]; then die "--amendment needs N"; fi
     src="$RD/plan-amendment-$2.md"; amend=1
@@ -357,7 +385,14 @@ cmd_plan_gate() { # [--amendment N]
     done < <(sigs_of "$src")
   fi
   if [ "$misses" -gt 0 ]; then FAILED=1; fi
-  finish "result=$([ "$misses" -eq 0 ] && echo ok || echo miss) misses=$misses warnings=$warns"
+  if [ -z "$amend" ]; then
+    v=$(plan_cmd "$src" verify); f=$(plan_cmd "$src" Full); l=$(plan_cmd "$src" Lint)
+    if [ -n "$v" ]; then state_put verify_cmd "$v"; fi
+    state_put full_cmd "${f:--}"
+    state_put lint_cmd "${l:--}"
+    cmds=" verify=$(state_get verify_cmd) full=$(state_get full_cmd) lint=$(state_get lint_cmd)"
+  fi
+  finish "result=$([ "$misses" -eq 0 ] && echo ok || echo miss) misses=$misses warnings=$warns$cmds"
 }
 
 # ---------------------------------------------------------------- gates
@@ -372,6 +407,22 @@ changed_paths() { # worktree paths, not preexisting_dirty
     case "$dirty" in *",$p,"*) continue ;; esac
     printf '%s\n' "$p"
   done
+}
+
+cmd_changed() {
+  local dirty line p old code n=0 out="" kind
+  dirty=",$(state_get preexisting_dirty),"
+  while IFS= read -r line; do
+    code=${line:0:2}; p=${line:3}; old=""
+    case "$p" in *" -> "*) old=${p%% -> *}; p=${p##* -> } ;; esac
+    p=${p#\"}; p=${p%\"}; old=${old#\"}; old=${old%\"}
+    case "$dirty" in *",$p,"*) continue ;; esac
+    if [ -n "$old" ]; then out="${out}head $old"$'\n'; n=$((n + 1)); fi
+    if [ "$code" != "??" ] && git cat-file -e "HEAD:$p" 2>/dev/null; then kind=head; else kind=new; fi
+    out="${out}$kind $p"$'\n'; n=$((n + 1))
+  done < <(git --no-pager status --porcelain -uall)
+  echo "changed=$n"
+  printf '%s' "$out"
 }
 
 weak_scan() { # file base -> "removed added skip_added"
@@ -524,8 +575,8 @@ cmd_report() {
       sp[agent]++; tk[agent] += num(tok); tu[agent] += num(tl); dd[agent] += num(du)
       if (out == "invalid") inv++
       if (out == "deviation") dev++
-      if (mode ~ /\(retry\)/) rt++
-      if (mode ~ /^fix \(/) { c = mode; sub(/^fix \(/, "", c); sub(/[,)].*/, "", c); fx[c]++ }
+      if (mode ~ /:retry$/) rt++
+      if (mode ~ /^fix:/) { c = mode; sub(/^fix:/, "", c); sub(/:.*/, "", c); fx[c]++ }
     }
     END {
       print "| agent | spawns | tokens | tool_uses | duration |"
@@ -572,6 +623,8 @@ case "$cmd" in
   amendments) cmd_amendments ;;
   plan-gate) cmd_plan_gate "$@" ;;
   gates) cmd_gates ;;
+  changed) cmd_changed ;;
+  start) cmd_start "$@" ;;
   preexisting) cmd_preexisting ;;
   snapshot) snapshot_tree ;;
   review-diff) cmd_review_diff ;;

@@ -66,7 +66,6 @@ Type: feature | fix | refactor | chore
 Full: `<command>` (from the digest, or `-` if the same as above).
 Lint: `<command>` (from the digest, or `-`).
 
-
 ## Out of scope
 - <explicitly not done>
 

@@ -41,7 +41,7 @@ The task text and `RUN_DIR` (for example `.atelier/runs/add-retry-backoff-1021`)
 3. **Tests:** where tests for those files live, naming style, one existing test to imitate.
 4. **Idioms and conventions** the code actually uses (error handling, nullability, DI style, logging, immutability, records/data classes). Report what the code does, not general best practice.
 5. **Project rules:** only the parts of AGENTS.md / CLAUDE.md / CONTRIBUTING.md / .github/copilot-instructions.md that constrain this task.
-7. **Verify command:** ONE shell command that compiles and runs the relevant tests.
+6. **Verify command:** ONE shell command that compiles and runs the relevant tests.
    - Sources, in order. Stop at the first good one:
      1. commands in AGENTS.md / CLAUDE.md / README / CONTRIBUTING
      2. CI config (`.github/workflows/*`, `Jenkinsfile`, `bitbucket-pipelines.yml`, `.gitlab-ci.yml`, `azure-pipelines.yml`)
@@ -51,7 +51,6 @@ The task text and `RUN_DIR` (for example `.atelier/runs/add-retry-backoff-1021`)
    - Skip commands that need secrets, network services or docker, unless the docs call them the standard local check.
    - No build or test setup: write `none` and say why.
    - Lint or format command (Spotless, Checkstyle, ESLint, Prettier, Ruff, gofmt, `cargo fmt`/clippy) from the same sources. Report it as `lint:`. Use `-` if none.
-8. **Tooling:** whether `gh` and `glab` are on PATH (`command -v gh glab`). Do not guess.
 
 ## Output: `$RUN_DIR/digest.md`
 ```markdown
@@ -76,7 +75,6 @@ The task text and `RUN_DIR` (for example `.atelier/runs/add-retry-backoff-1021`)
 
 ## Project rules (that constrain this task)
 - <rule> (source: <file>)
-
 
 ## Verify
 - narrow: `<command>`   (source: <where you found it>)
