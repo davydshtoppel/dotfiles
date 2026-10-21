@@ -6,32 +6,52 @@ paths:
 
 # Java Rules
 
-Existing project conventions win. Don't reformat code you didn't touch.
+Project conventions override these rules. Do not reformat code that you do not change.
 
 ## Design
-- Solve the task at hand; no abstractions for requirements that aren't in it.
-- Idioms over GoF patterns: records, enums, sealed types, lambdas and framework features first. Use a pattern only with ≥2 real variants today. Name types after the domain, not the pattern.
-- Don't reinvent: before writing a helper, look for one in the project and its existing dependencies (JDK, Spring, Guava, Commons, …). Don't add a dependency for a one-liner.
-- Collaborators (services, repositories, clients) go behind interfaces as test seams; one implementation is fine.
-- Composition over inheritance; constructor injection; no static mutable state.
-- Allow duplication until the third occurrence; a wrong abstraction costs more.
+- Build only what the task needs. Add no abstraction for a future requirement.
+- Use language idioms first: records, enums, sealed types, lambdas, framework features.
+- Use a GoF pattern only when ≥2 variants exist now. Name the type after the domain, not the pattern.
+- Before you write a helper, search the project and its dependencies (JDK, Spring, Guava, Commons).
+- Add no dependency for a one-line helper.
+- Put collaborators (services, repositories, clients) behind an interface. One implementation is correct: the interface is a test seam, not a pattern.
+- Use composition, not inheritance.
+- Use constructor injection.
+- Keep no static mutable state.
+- Extract shared code at the third copy, not before.
 
-## Validation & Errors
-- Validate input once, where it enters the system (endpoint, consumer, loader). Inside, trust the contract and JSpecify: no defensive checks per method.
-- Never swallow exceptions; wrap with the cause attached. Don't log and rethrow. No exceptions for control flow.
-- `Optional` only as a return type.
-- Log with SLF4J placeholders, not string concatenation; log once, where the exception is handled.
+## Validation and errors
+- Validate input once, at the entry point (endpoint, consumer, file loader).
+- Inside the system, do not repeat null or argument checks. JSpecify annotations are the contract.
+- Do not catch an exception without handling it. Wrap it with the cause.
+- Log an exception once, where you handle it. Do not log and rethrow.
+- Do not use exceptions for control flow.
+- Use `Optional` only as a return type.
+- Log with SLF4J placeholders, not string concatenation.
 
 ## Style
-- Imports: third-party, `javax.*`, `java.*`, static; alphabetical, groups separated by a blank line; no wildcard or `import module`.
-- Formatting: 4-space indent, 100-char lines, braces always, opening brace on the same line.
-- Package-private by default. `final` on classes (unless designed for extension), parameters and fields.
-- JSpecify: `@NullMarked` per package or class; mark nullable types `@Nullable`.
+- Import order: third-party, `javax.*`, `java.*`, static. Sort each group alphabetically. Put a blank line between groups.
+- Do not use wildcard imports or `import module`.
+- Indent 4 spaces. Max line length 100. Always use braces. Put the opening brace on the same line.
+- Use package-private visibility by default.
+- Make fields and parameters `final`. Make classes `final` unless they are designed for extension.
+- Put `@NullMarked` on the package (`package-info.java`) or class. Mark each nullable type `@Nullable`.
 
-## JDK 25 Idioms (final features only, no preview)
-- Records; sealed interfaces + records for closed hierarchies.
-- Switch expressions with type/record patterns and `when` guards. Leave out `default` on sealed switches so the compiler checks exhaustiveness.
-- `instanceof` bindings, `_` for unused variables, `var` when the type is obvious.
-- `List.of`/`Map.of`, `getFirst()`/`getLast()`/`reversed()`, `Stream.toList()`, text blocks, `formatted()`.
-- Statements before `super(…)` instead of static helper methods.
-- Virtual threads for blocking I/O; `ScopedValue` instead of `ThreadLocal`.
+## JDK 25 idioms
+Use final features only. Do not use preview features.
+
+| Use | Instead of |
+|---|---|
+| record | class with fields, getters, `equals`/`hashCode` |
+| sealed interface + records | open hierarchy for a closed set of types |
+| switch expression with type/record patterns and `when` | `if`/`instanceof` chains |
+| no `default` in a switch over a sealed type | `default` that hides a missing case |
+| `instanceof` binding | cast after `instanceof` |
+| `_` | name for an unused variable |
+| `var` when the right side shows the type | repeated type name |
+| `List.of`, `Map.of`, `Stream.toList()` | `Arrays.asList`, `Collections.unmodifiable*`, `collect(Collectors.toList())` |
+| `getFirst()`, `getLast()`, `reversed()` | `get(0)`, `get(size() - 1)`, manual reverse |
+| text block, `formatted()` | string concatenation, `String.format` |
+| statements before `super(…)` | static helper for constructor arguments |
+| virtual threads for blocking I/O | platform thread pools |
+| `ScopedValue` | `ThreadLocal` |
