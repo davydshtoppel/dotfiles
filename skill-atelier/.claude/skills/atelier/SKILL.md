@@ -42,6 +42,8 @@ The agent name is `atelier-<name>`. "Run" a subagent means start it with the Age
 
 **Talking to the user:** short sentences, one fact each; lists and tables; no filler; result first, then next step; terms of this file; full paths.
 
+**Show, then ask.** At every checkpoint, first write the full checkpoint summary as normal message text. Then call the question tool in the same message. The question text holds only the question and the options, never the summary. Never ask without the summary, also on `resume` and after a revise. If you have not read the input files for the summary, read them first.
+
 ## Arguments
 
 The user invoked this with: `$ARGUMENTS`
@@ -50,7 +52,7 @@ The user invoked this with: `$ARGUMENTS`
 |---|---|
 | empty | Print `/atelier <task description>` or `/atelier resume [run-id]`. Stop. |
 | `resume` | List `.atelier/runs/*/state.md` (id, phase, updated). Stop. |
-| `resume <id>` | Read its `state.md`. Continue at `phase`: `explore` = Phase 1; `plan` = Phase 2; `checkpoint-1` and `checkpoint-2` = show it again; `done` and `aborted` = run `report <id>`, show it, stop; `refresh` = run **refresh digest** again, then Phase 2; `implement` = if `impl-report.md` has `Status: DONE` or `FIX_DONE`, the **implement loop** from step 2; else task `resume` if `impl-report.md` exists, else `implement`; `verify` = run verify again; `review` = run Phase 4.5 again; `recheck` = run Phase 4.6 (if `review_tree` is `-`, go to checkpoint 2). |
+| `resume <id>` | Read its `state.md`. Continue at `phase`: `explore` = Phase 1; `plan` = Phase 2; `checkpoint-1` and `checkpoint-2` = read its input files and run that checkpoint again (**show, then ask**); `done` and `aborted` = run `report <id>`, show it, stop; `refresh` = run **refresh digest** again, then Phase 2; `implement` = if `impl-report.md` has `Status: DONE` or `FIX_DONE`, the **implement loop** from step 2; else task `resume` if `impl-report.md` exists, else `implement`; `verify` = run verify again; `review` = run Phase 4.5 again; `recheck` = run Phase 4.6 (if `review_tree` is `-`, go to checkpoint 2). |
 | other | New run. The argument is `INPUT`. |
 
 ## The script
@@ -156,7 +158,7 @@ Run the planner with `mode: plan`. Then:
 
 ## Checkpoint 1 — Plan approval
 
-Show a summary of `plan.md`, not the whole file:
+Read `plan.md`. **Show, then ask.** The summary has these parts, in this order. Write every part; write `none` for an empty part:
 - title and type; goal; acceptance criteria
 - table of steps: file and one-line change
 - number of test cases and the ACs each covers. Flag an AC with no test case.
@@ -164,7 +166,7 @@ Show a summary of `plan.md`, not the whole file:
 - the **verify command** and the **lint command** (or `-`)
 - full path `.atelier/runs/<id>/plan.md`
 
-Ask with AskUserQuestion:
+Then ask with AskUserQuestion:
 - **Approve:** continue with this verify command.
 - **Revise plan:** the user says what to change. Run Phase 2 again with the feedback in the planner prompt. The plan gate resets the commands from the plan: show them again. Return to checkpoint 1.
 - **Change verify command:** take the new verify, lint and/or full command, set them in `state.md`, ask again.
@@ -214,14 +216,14 @@ Runs once, after a review fix passed the gates and verify.
 
 ## Checkpoint 2 — Change approval
 
-Show:
+**Show, then ask.** The summary has these parts, in this order:
 1. `changed <id>` and `git --no-pager diff --stat`.
 2. Gate result and verify result: pass with duration, `not run (none)`, or `accepted unverified`. List pre-existing baseline failures. If `full_cmd` differs from `verify_cmd`, say that only the narrow command ran and the full command runs when you accept.
 3. Review result: verdict, number of blocker/major findings fixed, open findings (rows; one-line count of minors; `review.md` path). If the recheck ran: its verdict, the `open` and `new` blocker/major rows, and the `recheck.md` path.
 4. **Adaptations** from `impl-report.md`, and each amendment with a one-line cause.
 5. The one line from `report <id> --short`. Hint: the user can inspect the full diff with `git diff`.
 
-Ask with AskUserQuestion:
+Then ask with AskUserQuestion:
 - **Accept:** see Phase 5.
 - **Abort (discard):** see **Discard**.
 
