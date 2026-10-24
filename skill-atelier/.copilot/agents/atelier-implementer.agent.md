@@ -1,6 +1,6 @@
 ---
 name: atelier-implementer
-description: 'atelier implementer: implements the approved plan and its tests. Used only by the atelier agent.'
+description: 'atelier implementer: implements the approved plan and its tests. Used only by the atelier skill.'
 tools: ['view', 'grep', 'glob', 'bash', 'edit', 'create']
 model: ['claude-sonnet-5.5', 'Claude Sonnet 5.5 (copilot)', 'GPT-5.4 (copilot)']
 user-invocable: false

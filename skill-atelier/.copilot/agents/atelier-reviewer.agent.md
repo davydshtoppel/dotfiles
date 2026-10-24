@@ -1,6 +1,6 @@
 ---
 name: atelier-reviewer
-description: 'atelier reviewer: reviews the diff and writes review.md, or rechecks a fix and writes recheck.md. Used only by the atelier agent.'
+description: 'atelier reviewer: reviews the diff and writes review.md, or rechecks a fix and writes recheck.md. Used only by the atelier skill.'
 tools: ['view', 'grep', 'glob', 'bash', 'edit', 'create']
 model: ['claude-opus-5.5', 'Claude Opus 5.5 (copilot)', 'GPT-5.5 (copilot)']
 user-invocable: false

@@ -1,10 +1,7 @@
 ---
 name: atelier
-description: 'Atelier: Opus-level code quality for fewer tokens (strong models plan and review, cheaper models explore and implement). Drives any coding task through explore → plan → your approval → implement → verify → review → your approval, using the atelier-explorer, atelier-planner, atelier-implementer and atelier-reviewer subagents.'
+description: 'Atelier: Opus-level code quality for fewer tokens (strong models plan and review, cheaper models explore and implement). Drives any coding task through explore → plan → your approval → implement → verify → review → your approval, using the atelier-explorer, atelier-planner, atelier-implementer and atelier-reviewer subagents. Use only when the user says ''atelier'' (for example ''use atelier'', ''atelier: <task>'', ''resume atelier <id>'') or when another skill tells you to run the atelier. Do not use for other coding requests.'
 argument-hint: '<task description> | resume [run-id]'
-model: ['claude-sonnet-5.5', 'Claude Sonnet 5.5 (copilot)', 'GPT-5.4 (copilot)']
-agents: ['atelier-explorer', 'atelier-planner', 'atelier-implementer', 'atelier-reviewer']
-disable-model-invocation: true
 ---
 
 # Atelier
@@ -28,7 +25,7 @@ The agent name is `atelier-<name>`. "Run" a subagent means start it as a **subag
 - You write only `task.md` yourself. Change `state.md` and `usage.md` only with the script.
 - If a subagent start fails, run it once more. If it fails again, stop and ask: **Retry / Abort**. Never continue in your own thread.
 - If you are about to read code, write a plan or edit code, stop. Start the matching subagent.
-- If you run on a model that is not in your `model:` list, tell the user in one line at the start.
+- The orchestrator needs no strong model. If the session runs on a strong model (Opus class), tell the user in one line at the start that a mid model (Sonnet class) is enough.
 
 **Tokens**
 - Pass file paths, not contents. For failures pass the path of `verify.log`, not its tail.
@@ -38,13 +35,14 @@ The agent name is `atelier-<name>`. "Run" a subagent means start it as a **subag
 **Git**
 - Every git command uses `git --no-pager`.
 - Never create a branch, commit, push or open a PR. The user or another skill does that.
+- If another skill started the atelier, give control back to it after accept or abort. Report the run id and the result line.
 - Never discard user changes (`reset --hard`, `checkout -- .`, `clean`).
 
 **Checkpoints (asking the user)**
 - If a question tool exists (`ask_user` in Copilot CLI, the ask-questions tool in VS Code), use it with the listed options.
 - Else print the question with numbered options and **end your turn**. Continue only after the user replies.
 - Write `state.md` before every checkpoint, so the run can be resumed in a new chat with `resume <id>`.
-- This agent is interactive only. Do not run it with `copilot -p`.
+- This skill is interactive only. Do not run it with `copilot -p`.
 
 **Talking to the user:** short sentences, one fact each; lists and tables; no filler; result first, then next step; terms of this file; full paths.
 
@@ -52,7 +50,7 @@ The agent name is `atelier-<name>`. "Run" a subagent means start it as a **subag
 
 ## Arguments
 
-The user's message is `INPUT`.
+`INPUT` is the task text from the user's message or from the skill that started the atelier.
 
 | Input | Action |
 |---|---|
@@ -143,7 +141,7 @@ The script adds the duration and keeps `subagent_tokens` and `subagent_duration`
 
 ## Phase 0 — Intake
 
-0. **Preflight.** Check that this session has a tool to start a named custom agent as a subagent. Run `atelier help`. If either is missing, stop before you write any file. For the subagent tool, tell the user: VS Code = enable the `agent` tool for this agent and the setting `chat.customAgentInSubagent.enabled`; IntelliJ = update the Copilot plugin; Copilot CLI = start with `/agent atelier`. For the script, tell the user: `stow --no-folding -t ~ skill-atelier` and put `~/.local/bin` on `PATH`. Do not continue.
+0. **Preflight.** Check that this session has a tool to start a named custom agent as a subagent. Run `atelier help`. If either is missing, stop before you write any file. For the subagent tool, tell the user: VS Code = enable the `agent` tool and the setting `chat.customAgentInSubagent.enabled`; IntelliJ and Copilot CLI = update Copilot. For the script, tell the user: `stow --no-folding -t ~ skill-atelier` and put `~/.local/bin` on `PATH`. Do not continue.
 1. **Repo.** `git --no-pager rev-parse --show-toplevel` and `git --no-pager rev-parse --verify HEAD` must succeed. If not, stop before you write any file. Tell the user: the atelier needs a git repo with at least one commit, as the baseline for diffs and undo (`git init`, then a first commit). Work from the repo root.
 2. **Clean worktree.** If `git --no-pager status --porcelain` shows changes, ask: **Abort (Recommended)** / **Continue anyway**. On continue, run `dirty <id>` after step 5. It records the paths as `preexisting_dirty`. Never stage or commit them.
 3. **Task.** `INPUT` is the task text.

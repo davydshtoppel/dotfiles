@@ -1,6 +1,6 @@
 ---
 name: atelier-explorer
-description: 'atelier explorer: writes digest.md for one task. Used only by the atelier agent.'
+description: 'atelier explorer: writes digest.md for one task. Used only by the atelier skill.'
 tools: ['view', 'grep', 'glob', 'bash', 'edit', 'create']
 model: ['gpt-6-luna', 'GPT-6 Luna (copilot)', 'Claude Haiku 5.5 (copilot)']
 user-invocable: false

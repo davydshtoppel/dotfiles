@@ -1,6 +1,6 @@
 ---
 name: atelier-planner
-description: 'atelier planner: writes plan.md and plan amendments. Used only by the atelier agent.'
+description: 'atelier planner: writes plan.md and plan amendments. Used only by the atelier skill.'
 tools: ['view', 'grep', 'glob', 'bash', 'edit', 'create']
 model: ['claude-opus-5.5', 'Claude Opus 5.5 (copilot)', 'GPT-5.5 (copilot)']
 user-invocable: false

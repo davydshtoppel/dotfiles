@@ -1,8 +1,7 @@
 ---
 name: atelier
-description: Atelier: Opus-level code quality for fewer tokens (strong models plan and review, cheaper models explore and implement). Drives any coding task through explore → plan → your approval → implement → verify → review → your approval, using the atelier-explorer, atelier-planner, atelier-implementer and atelier-reviewer subagents. Use when the user runs /atelier.
+description: Atelier: Opus-level code quality for fewer tokens (strong models plan and review, cheaper models explore and implement). Drives any coding task through explore → plan → your approval → implement → verify → review → your approval, using the atelier-explorer, atelier-planner, atelier-implementer and atelier-reviewer subagents. Use when the user runs /atelier or says 'atelier' (for example 'use atelier', 'atelier: <task>', 'resume atelier <id>') or when another skill tells you to run the atelier. Do not use for other coding requests.
 argument-hint: <task description> | resume [run-id]
-disable-model-invocation: true
 model: sonnet
 allowed-tools: Agent, SendMessage, Read, Grep, Glob, Write(.atelier/**), ToolSearch, Bash(atelier *), Bash(git --no-pager status *), Bash(git --no-pager rev-parse *), Bash(git --no-pager diff *)
 ---
@@ -38,6 +37,7 @@ The agent name is `atelier-<name>`. "Run" a subagent means start it with the Age
 **Git**
 - Every git command uses `git --no-pager`.
 - Never create a branch, commit, push or open a PR. The user or another skill does that.
+- If another skill started the atelier, give control back to it after accept or abort. Report the run id and the result line.
 - Never discard user changes (`reset --hard`, `checkout -- .`, `clean`).
 
 **Talking to the user:** short sentences, one fact each; lists and tables; no filler; result first, then next step; terms of this file; full paths.
